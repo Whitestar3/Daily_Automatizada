@@ -1,0 +1,1588 @@
+{
+  "name": "DAILY_1_BOTON",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 5,6,7 * * *"
+            }
+          ]
+        }
+      },
+      "id": "dd6a3807-e0e8-4fed-9e1b-4abc6fbd85ed",
+      "name": "Trigger diario 06:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [
+        -928,
+        2304
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "projectId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "=YOUR_GCP_PROJECT_ID"
+        },
+        "sqlQuery": "WITH SEMANA AS (\n  SELECT\n    DATE_TRUNC(d, WEEK(SUNDAY))                                             AS semana_inicio,\n    DATE_ADD(DATE_TRUNC(d, WEEK(SUNDAY)), INTERVAL 6 DAY)                  AS semana_fin,\n    CONCAT('W', LPAD(CAST(DATE_DIFF(DATE_TRUNC(d, WEEK(SUNDAY)),\n      DATE '2025-12-28', WEEK) + 1 AS STRING), 2, '0'),\n      '-', CAST(EXTRACT(YEAR FROM d) AS STRING))                           AS semana_fiscal\n  FROM UNNEST(GENERATE_DATE_ARRAY(\n    DATE_TRUNC(DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY), WEEK(SUNDAY)),\n    DATE_TRUNC(CURRENT_DATE(), WEEK(SUNDAY)),\n    INTERVAL 1 WEEK\n  )) AS d\n)\nSELECT\n  S.semana_fiscal,\n  SAFE_DIVIDE(\n    SUM(IF(L.PROCESS = 'putaway', L.UNITS, 0)),\n    SUM(L.TIEMPO_SISTEMICO + L.TIEMPO_NO_SISTEMICO + L.TND + L.EXTENDED_IDLE_TIME)\n  )                                                                         AS INP,\n  SAFE_DIVIDE(\n    SUM(IF(L.PROCESS IN ('checkin','direct_checkin'), L.UNITS, 0)),\n    SUM(IF(L.PROCESS IN ('checkin','direct_checkin'),\n      L.TIEMPO_SISTEMICO + L.TIEMPO_NO_SISTEMICO + L.TND + L.EXTENDED_IDLE_TIME, 0))\n  )                                                                         AS TPH_CH_DCI,\n  SAFE_DIVIDE(\n    SUM(IF(L.PROCESS = 'putaway', L.UNITS, 0)),\n    SUM(IF(L.PROCESS = 'putaway',\n      L.TIEMPO_SISTEMICO + L.TIEMPO_NO_SISTEMICO + L.TND + L.EXTENDED_IDLE_TIME, 0))\n  )                                                                         AS TPH_PUTAWAY,\n  SUM(IF(L.PROCESS IN ('checkin','direct_checkin'), L.UNITS, 0))           AS UNID_CH_DCI,\n  SUM(IF(L.PROCESS = 'putaway', L.UNITS, 0))                               AS UNID_PUTAWAY,\n  SAFE_DIVIDE(\n    SUM(IF(L.PROCESS = 'receiving', L.UNITS, 0)),\n    SUM(IF(L.PROCESS = 'receiving',\n      L.TIEMPO_SISTEMICO + L.TIEMPO_NO_SISTEMICO + L.TND + L.EXTENDED_IDLE_TIME, 0))\n  )                                                                         AS NETA_RECEIVING,\n  SAFE_DIVIDE(\n    SUM(IF(L.PROCESS = 'checkin', L.UNITS, 0)),\n    SUM(IF(L.PROCESS = 'checkin',\n      L.TIEMPO_SISTEMICO + L.TIEMPO_NO_SISTEMICO + L.TND + L.EXTENDED_IDLE_TIME, 0))\n  )                                                                         AS NETA_CHECKIN,\n  SAFE_DIVIDE(\n    SUM(IF(L.PROCESS = 'direct_checkin', L.UNITS, 0)),\n    SUM(IF(L.PROCESS = 'direct_checkin',\n      L.TIEMPO_SISTEMICO + L.TIEMPO_NO_SISTEMICO + L.TND + L.EXTENDED_IDLE_TIME, 0))\n  )                                                                         AS NETA_DCI,\n  SAFE_DIVIDE(\n    SUM(IF(L.PROCESS = 'putaway', L.UNITS, 0)),\n    SUM(IF(L.PROCESS = 'putaway',\n      L.TIEMPO_SISTEMICO + L.TIEMPO_NO_SISTEMICO + L.TND + L.EXTENDED_IDLE_TIME, 0))\n  )                                                                         AS NETA_PUTAWAY,\n  SAFE_DIVIDE(\n    SUM(IF(L.PROCESS = 'direct_checkin', L.UNITS, 0)),\n    SUM(IF(L.PROCESS IN ('checkin','direct_checkin'), L.UNITS, 0))\n  ) * 100                                                                   AS SHARE_DCI,\n  MAX(IF(L.PROCESS = 'putaway',        L.TARGET_AREA_PNET,                NULL)) AS TARGET_INP,\n  MAX(IF(L.PROCESS = 'receiving',      L.TARGET_PROCESS_NET_PRODUCTIVITY,  NULL)) AS TARGET_NETA_RECEIVING,\n  MAX(IF(L.PROCESS = 'checkin',        L.TARGET_PROCESS_NET_PRODUCTIVITY,  NULL)) AS TARGET_NETA_CHECKIN,\n  MAX(IF(L.PROCESS = 'direct_checkin', L.TARGET_PROCESS_NET_PRODUCTIVITY,  NULL)) AS TARGET_NETA_DCI,\n  MAX(IF(L.PROCESS = 'putaway',        L.TARGET_PROCESS_NET_PRODUCTIVITY,  NULL)) AS TARGET_NETA_PUTAWAY\nFROM `your-project.source.OPERATOR_PRODUCTIVITY` L\nJOIN SEMANA S\n  ON DATE(L.START_DATE) BETWEEN S.semana_inicio AND S.semana_fin\nWHERE L.LOGISTIC_CENTER_ID = 'CD-01'\n  AND L.AREA = 'inbound'\n  AND DATE(L.START_DATE) >= DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY)\n  AND DATE(L.START_DATE) < CURRENT_DATE()\nGROUP BY S.semana_fiscal\nORDER BY S.semana_fiscal DESC",
+        "options": {}
+      },
+      "id": "4faa3dd3-c323-44ca-87b0-c8b0fa234bd2",
+      "name": "BBDD_PRODUCTIVIDAD",
+      "type": "n8n-nodes-base.googleBigQuery",
+      "position": [
+        -288,
+        1504
+      ],
+      "typeVersion": 2.1,
+      "credentials": {
+        "googleGenericOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Google BigQuery OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "projectId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "=YOUR_GCP_PROJECT_ID"
+        },
+        "sqlQuery": "WITH\nSEMANA AS (\n  SELECT\n    DATE_TRUNC(d, WEEK(SUNDAY))                                             AS semana_inicio,\n    DATE_ADD(DATE_TRUNC(d, WEEK(SUNDAY)), INTERVAL 6 DAY)                  AS semana_fin,\n    CONCAT('W', LPAD(CAST(DATE_DIFF(DATE_TRUNC(d, WEEK(SUNDAY)),\n      DATE '2025-12-28', WEEK) + 1 AS STRING), 2, '0'),\n      '-', CAST(EXTRACT(YEAR FROM d) AS STRING))                           AS semana_fiscal\n  FROM UNNEST(GENERATE_DATE_ARRAY(\n    DATE_TRUNC(DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY), WEEK(SUNDAY)),\n    DATE_TRUNC(CURRENT_DATE(), WEEK(SUNDAY)),\n    INTERVAL 1 WEEK\n  )) AS d\n),\nSLA_D AS (\n  SELECT\n    DATE_TRUNC(DATE(START_DATE), WEEK(SUNDAY))            AS semana_inicio,\n    SUM(NUMERATOR)                                        AS SLA_NUMERATOR,\n    SUM(DENOMINATOR)                                      AS SLA_DENOMINATOR,\n    SAFE_DIVIDE(SUM(NUMERATOR), SUM(DENOMINATOR))         AS SLA_PCT\n  FROM `your-project.source.INBOUND_SLA`\n  WHERE WAREHOUSE_ID = 'CD-01'\n    AND DATE(START_DATE) >= DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY)\n    AND DATE(START_DATE) < CURRENT_DATE()\n  GROUP BY 1\n),\nREA_D AS (\n  SELECT\n    DATE_TRUNC(DATE(R.FECHA_REAPERTURA), WEEK(SUNDAY))    AS semana_inicio,\n    SUM(IF(R.ESTADO_EXC = 'FUERA DE 48h', 1, 0))         AS REAPERTURAS_FUERA_SLA,\n    MAX(I.INB)                                            AS INB_TOTALES,\n    SAFE_DIVIDE(\n      SUM(IF(R.ESTADO_EXC = 'FUERA DE 48h', 1, 0)),\n      MAX(I.INB)\n    )                                                     AS PCT_REAPERTURAS\n  FROM `your-project.cx.REOPENINGS` R\n  LEFT JOIN (\n    SELECT\n      DATE_TRUNC(DATE(INB_RECEIVED_DATETIME), WEEK(SUNDAY)) AS semana_inicio,\n      COUNT(DISTINCT INBOUND_ID)                            AS INB\n    FROM `your-project.cx.INBOUND_CONTACTS_AGG`\n    WHERE WAREHOUSE = 'CD-01'\n      AND DATE(INB_RECEIVED_DATETIME) >= DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY)\n    GROUP BY 1\n  ) I ON I.semana_inicio = DATE_TRUNC(DATE(R.FECHA_REAPERTURA), WEEK(SUNDAY))\n  WHERE R.WAREHOUSE = 'CD-01'\n    AND DATE(R.FECHA_REAPERTURA) >= DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY)\n    AND DATE(R.FECHA_REAPERTURA) < CURRENT_DATE()\n    AND R.ESTADO_EXC = 'FUERA DE 48h'\n  GROUP BY 1\n),\nDPMO_CRUCE_D AS (\n  SELECT\n    DATE_TRUNC(DATE(d.DATE_FINISH), WEEK(SUNDAY))         AS semana_inicio,\n    ROUND(SAFE_DIVIDE(COUNT(1), MAX(p.INBOUND_SKU)) * 1000000, 0) AS DPMO_CRUCE\n  FROM `your-project.cx.SKU_CLAIMS` d\n  LEFT JOIN (\n    SELECT\n      DATE_TRUNC(DATE(MIN_ARRIVAL_DATETIME_TZ), WEEK(SUNDAY)) AS semana_inicio,\n      COUNT(INBOUND_SKU)                                    AS INBOUND_SKU\n    FROM `your-project.cx.SKU_PROCESSED`\n    WHERE WAREHOUSE = 'CD-01'\n    GROUP BY 1\n  ) p ON DATE_TRUNC(DATE(d.DATE_FINISH), WEEK(SUNDAY)) = p.semana_inicio\n  WHERE d.WAREHOUSE = 'CD-01'\n    AND d.CULPABILIDADE = 'ERROR OPERATIVO'\n    AND d.CDU_GROUP IN ('CRUCE SKU','CRUCE IS')\n    AND DATE(d.DATE_FINISH) >= DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY)\n    AND DATE(d.DATE_FINISH) < CURRENT_DATE()\n  GROUP BY 1\n),\nDPMO_FALT_D AS (\n  SELECT\n    DATE_TRUNC(DATE(d.DATE_FINISH), WEEK(SUNDAY))         AS semana_inicio,\n    ROUND(SAFE_DIVIDE(\n      COUNT(IF(d.REASON NOT IN ('SIN REAPERTURA','SIN REAPERTURA - FPP'), d.SKU, NULL)),\n      MAX(p.INBOUND_SKU)\n    ) * 1000000, 0)                                       AS DPMO_FALTANTE\n  FROM `your-project.cx.SKU_CLAIMS` d\n  LEFT JOIN (\n    SELECT\n      DATE_TRUNC(DATE(MIN_ARRIVAL_DATETIME_TZ), WEEK(SUNDAY)) AS semana_inicio,\n      COUNT(INBOUND_SKU)                                    AS INBOUND_SKU\n    FROM `your-project.cx.SKU_PROCESSED`\n    WHERE WAREHOUSE = 'CD-01'\n    GROUP BY 1\n  ) p ON DATE_TRUNC(DATE(d.DATE_FINISH), WEEK(SUNDAY)) = p.semana_inicio\n  WHERE d.WAREHOUSE = 'CD-01'\n    AND d.CULPABILIDADE = 'ERROR OPERATIVO'\n    AND d.CDU_GROUP = 'FALTANTES'\n    AND DATE(d.DATE_FINISH) >= DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY)\n    AND DATE(d.DATE_FINISH) < CURRENT_DATE()\n  GROUP BY 1\n),\nCR_D AS (\n  SELECT\n    DATE_TRUNC(DATE(DATA_ACONTECIMENTO), WEEK(SUNDAY))    AS semana_inicio,\n    SUM(CX_CASE_ID)                                       AS SUM_CX_CASE_ID,\n    SUM(ENVIOS)                                           AS SUM_ENVIOS,\n    SAFE_DIVIDE(SUM(CX_CASE_ID), SUM(ENVIOS))             AS CONTACT_RATE\n  FROM `your-project.cx.CONTACT_RATE`\n  WHERE WAREHOUSE = 'CD-01'\n    AND DATE(DATA_ACONTECIMENTO) >= DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY)\n    AND DATE(DATA_ACONTECIMENTO) < CURRENT_DATE()\n  GROUP BY 1\n),\nTEO_D AS (\n  SELECT\n    DATE_TRUNC(DATE, WEEK(SUNDAY))                        AS semana_inicio,\n    SAFE_DIVIDE(\n      SUM(IF(PROCESS = 'inbound audit', UNITS_TEO_INB, 0)),\n      SUM(UNITS_GNP)\n    )                                                     AS TEO_INBOUND_AUDIT\n  FROM `your-project.source.TEO_SUMMARY`\n  WHERE WAREHOUSE_ID = 'CD-01'\n    AND SITE_ID = 'MLC'\n    AND DATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY)\n    AND DATE < CURRENT_DATE()\n  GROUP BY 1\n),\nAUD_D AS (\n  SELECT\n    DATE_TRUNC(DATE(A.FBM_CREATED_DATE), WEEK(SUNDAY))   AS semana_inicio,\n    SUM(A.ERROR_UNITS)                                    AS ERROR_UNITS,\n    MAX(P.Unid)                                           AS UNID,\n    ROUND(\n      SAFE_DIVIDE(SUM(A.ERROR_UNITS), MAX(P.Unid)) * 1000000, 0\n    )                                                     AS INBOUND_AUDIT\n  FROM `your-project.source.INBOUND_AUDIT` A\n  LEFT JOIN (\n    SELECT\n      DATE_TRUNC(DATE(START_DATE), WEEK(SUNDAY))          AS semana_inicio,\n      SUM(UNITS)                                          AS Unid\n    FROM `your-project.source.EMPLOYEE_ATTRIBUTES`\n    WHERE LOGISTIC_CENTER_ID = 'CD-01'\n      AND PROCESS    = 'inbound'\n      AND SUBPROCESS = 'putaway'\n      AND START_DATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY)\n    GROUP BY 1\n  ) P ON P.semana_inicio = DATE_TRUNC(DATE(A.FBM_CREATED_DATE), WEEK(SUNDAY))\n  WHERE A.WAREHOUSE_ID = 'CD-01'\n    AND DATE(A.FBM_CREATED_DATE) >= DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY)\n    AND DATE(A.FBM_CREATED_DATE) < CURRENT_DATE()\n  GROUP BY 1\n)\nSELECT\n  S.semana_fiscal,\n  SLA_D.SLA_PCT,\n  SLA_D.SLA_NUMERATOR,\n  SLA_D.SLA_DENOMINATOR,\n  REA_D.REAPERTURAS_FUERA_SLA,\n  REA_D.INB_TOTALES,\n  REA_D.PCT_REAPERTURAS,\n  DPMO_CRUCE_D.DPMO_CRUCE,\n  DPMO_FALT_D.DPMO_FALTANTE,\n  CR_D.CONTACT_RATE,\n  CR_D.SUM_CX_CASE_ID,\n  CR_D.SUM_ENVIOS,\n  TEO_D.TEO_INBOUND_AUDIT,\n  AUD_D.INBOUND_AUDIT\nFROM SEMANA S\nLEFT JOIN SLA_D        ON SLA_D.semana_inicio        = S.semana_inicio\nLEFT JOIN REA_D        ON REA_D.semana_inicio        = S.semana_inicio\nLEFT JOIN DPMO_CRUCE_D ON DPMO_CRUCE_D.semana_inicio = S.semana_inicio\nLEFT JOIN DPMO_FALT_D  ON DPMO_FALT_D.semana_inicio  = S.semana_inicio\nLEFT JOIN CR_D         ON CR_D.semana_inicio         = S.semana_inicio\nLEFT JOIN TEO_D        ON TEO_D.semana_inicio        = S.semana_inicio\nLEFT JOIN AUD_D        ON AUD_D.semana_inicio        = S.semana_inicio\nORDER BY S.semana_fiscal DESC",
+        "options": {}
+      },
+      "id": "731a59c0-9a74-49b4-975d-ededf13c4a71",
+      "name": "BBDD_CALIDAD",
+      "type": "n8n-nodes-base.googleBigQuery",
+      "position": [
+        -288,
+        1760
+      ],
+      "typeVersion": 2.1,
+      "credentials": {
+        "googleGenericOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Google BigQuery OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "projectId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "=YOUR_GCP_PROJECT_ID"
+        },
+        "sqlQuery": "WITH\nSEMANA AS (\n  SELECT\n    DATE_TRUNC(d, WEEK(SUNDAY))                                             AS semana_inicio,\n    DATE_ADD(DATE_TRUNC(d, WEEK(SUNDAY)), INTERVAL 6 DAY)                  AS semana_fin,\n    CONCAT('W', LPAD(CAST(DATE_DIFF(DATE_TRUNC(d, WEEK(SUNDAY)),\n      DATE '2025-12-28', WEEK) + 1 AS STRING), 2, '0'),\n      '-', CAST(EXTRACT(YEAR FROM d) AS STRING))                           AS semana_fiscal\n  FROM UNNEST(GENERATE_DATE_ARRAY(\n    DATE_TRUNC(DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY), WEEK(SUNDAY)),\n    DATE_TRUNC(CURRENT_DATE(), WEEK(SUNDAY)),\n    INTERVAL 1 WEEK\n  )) AS d\n),\nSKU AS (\n  SELECT\n    INVENTORY_ID,\n    CASE WHEN FLAG_TOTABLE = TRUE THEN 'TOTEABLE' ELSE 'NO TOTEABLE' END   AS FLAG_TOTEABLE,\n    COALESCE(\n      ITE_VOLUMEN,\n      CASE\n        WHEN ITE_HEIGHT > 0 AND ITE_LENGTH > 0 AND ITE_WIDTH > 0\n        THEN ITE_HEIGHT * ITE_LENGTH * ITE_WIDTH / 1000.0\n        ELSE NULL\n      END\n    )                                                                       AS V_LITROS\n  FROM `your-project.source.SKU_DETAILS`\n  WHERE LOGISTIC_CENTER_ID = 'CD-01'\n    AND SIT_SITE_ID        = 'MLC'\n  QUALIFY ROW_NUMBER() OVER (\n    PARTITION BY INVENTORY_ID\n    ORDER BY (ITE_VOLUMEN IS NOT NULL) DESC, (ITE_HEIGHT IS NOT NULL) DESC\n  ) = 1\n),\nOPS AS (\n  SELECT DISTINCT\n    CAST(OPERATOR_ID AS STRING)  AS OPERATOR_ID,\n    DATE(START_DATE)             AS FECHA,\n    PROCESS                      AS PROCESO\n  FROM `your-project.source.OPERATOR_PRODUCTIVITY`\n  WHERE AREA               = 'inbound'\n    AND PROCESS            IN ('checkin','direct_checkin')\n    AND LOGISTIC_CENTER_ID = 'CD-01'\n    AND DATE(START_DATE)   >= DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY)\n    AND DATE(START_DATE)   < CURRENT_DATE()\n),\nVOL_CHK AS (\n  SELECT\n    'checkin'                                                               AS PROCESO,\n    DATE(`your-project.udf.FN_TIMEZONE`('MLC', m.AUD_INS_DTTM)) AS FECHA,\n    ROUND(SUM(m.FBM_QUANTITY * s.V_LITROS), 1)                             AS VOL_L_TOTAL,\n    ROUND(SUM(IF(IFNULL(s.FLAG_TOTEABLE,'NO TOTEABLE') = 'TOTEABLE',\n      m.FBM_QUANTITY * s.V_LITROS, NULL)), 1)                              AS VOL_L_TOTEABLE,\n    ROUND(SUM(IF(IFNULL(s.FLAG_TOTEABLE,'NO TOTEABLE') = 'NO TOTEABLE',\n      m.FBM_QUANTITY * s.V_LITROS, NULL)), 1)                              AS VOL_L_NO_TOTEABLE,\n    SUM(IF(IFNULL(s.FLAG_TOTEABLE,'NO TOTEABLE') = 'TOTEABLE',\n      m.FBM_QUANTITY, 0))                                                  AS UDS_TOTEABLE,\n    SUM(IF(IFNULL(s.FLAG_TOTEABLE,'NO TOTEABLE') = 'NO TOTEABLE',\n      m.FBM_QUANTITY, 0))                                                  AS UDS_NO_TOTEABLE,\n    SUM(m.FBM_QUANTITY)                                                    AS UDS_TOTALES\n  FROM `your-project.source.STOCK_MOVEMENTS` m\n  INNER JOIN OPS ops\n    ON  ops.OPERATOR_ID = CAST(m.FBM_USER_ID AS STRING)\n    AND ops.FECHA = DATE(`your-project.udf.FN_TIMEZONE`('MLC', m.AUD_INS_DTTM))\n    AND ops.PROCESO = 'checkin'\n  LEFT JOIN SKU s ON s.INVENTORY_ID = m.INVENTORY_ID\n  WHERE m.WAREHOUSE_ID       = 'CD-01'\n    AND m.FBM_REASON_PROCESS = 'inbound'\n    AND m.ADDRESS_FROM       IS NULL\n    AND m.ADDRESS_TO         LIKE 'MU-%'\n    AND m.AUD_INS_DTTM >= DATETIME(TIMESTAMP(DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY), 'America/Santiago'))\n    AND m.AUD_INS_DTTM <  DATETIME(TIMESTAMP(CURRENT_DATE(), 'America/Santiago'))\n  GROUP BY FECHA\n),\nVOL_DCI AS (\n  SELECT\n    'direct_checkin'                                                        AS PROCESO,\n    DATE(`your-project.udf.FN_TIMEZONE`('MLC', m.AUD_INS_DTTM)) AS FECHA,\n    ROUND(SUM(m.FBM_QUANTITY * s.V_LITROS), 1)                             AS VOL_L_TOTAL,\n    ROUND(SUM(IF(IFNULL(s.FLAG_TOTEABLE,'NO TOTEABLE') = 'TOTEABLE',\n      m.FBM_QUANTITY * s.V_LITROS, NULL)), 1)                              AS VOL_L_TOTEABLE,\n    ROUND(SUM(IF(IFNULL(s.FLAG_TOTEABLE,'NO TOTEABLE') = 'NO TOTEABLE',\n      m.FBM_QUANTITY * s.V_LITROS, NULL)), 1)                              AS VOL_L_NO_TOTEABLE,\n    SUM(IF(IFNULL(s.FLAG_TOTEABLE,'NO TOTEABLE') = 'TOTEABLE',\n      m.FBM_QUANTITY, 0))                                                  AS UDS_TOTEABLE,\n    SUM(IF(IFNULL(s.FLAG_TOTEABLE,'NO TOTEABLE') = 'NO TOTEABLE',\n      m.FBM_QUANTITY, 0))                                                  AS UDS_NO_TOTEABLE,\n    SUM(m.FBM_QUANTITY)                                                    AS UDS_TOTALES\n  FROM `your-project.source.STOCK_MOVEMENTS` m\n  INNER JOIN OPS ops\n    ON  ops.OPERATOR_ID = CAST(m.FBM_USER_ID AS STRING)\n    AND ops.FECHA = DATE(`your-project.udf.FN_TIMEZONE`('MLC', m.AUD_INS_DTTM))\n    AND ops.PROCESO = 'direct_checkin'\n  LEFT JOIN SKU s ON s.INVENTORY_ID = m.INVENTORY_ID\n  WHERE m.WAREHOUSE_ID       = 'CD-01'\n    AND m.FBM_REASON_PROCESS = 'inbound'\n    AND m.ADDRESS_FROM       IS NULL\n    AND m.ADDRESS_TO         LIKE 'MU-%'\n    AND m.AUD_INS_DTTM >= DATETIME(TIMESTAMP(DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY), 'America/Santiago'))\n    AND m.AUD_INS_DTTM <  DATETIME(TIMESTAMP(CURRENT_DATE(), 'America/Santiago'))\n  GROUP BY FECHA\n),\nVOL_PA AS (\n  SELECT\n    'putaway'                                                               AS PROCESO,\n    DATE(m.FBM_CREATED_DATE)                                               AS FECHA,\n    ROUND(SUM(m.FBM_QUANTITY * s.V_LITROS), 1)                             AS VOL_L_TOTAL,\n    ROUND(SUM(IF(IFNULL(s.FLAG_TOTEABLE,'NO TOTEABLE') = 'TOTEABLE',\n      m.FBM_QUANTITY * s.V_LITROS, NULL)), 1)                              AS VOL_L_TOTEABLE,\n    ROUND(SUM(IF(IFNULL(s.FLAG_TOTEABLE,'NO TOTEABLE') = 'NO TOTEABLE',\n      m.FBM_QUANTITY * s.V_LITROS, NULL)), 1)                              AS VOL_L_NO_TOTEABLE,\n    SUM(IF(IFNULL(s.FLAG_TOTEABLE,'NO TOTEABLE') = 'TOTEABLE',\n      m.FBM_QUANTITY, 0))                                                  AS UDS_TOTEABLE,\n    SUM(IF(IFNULL(s.FLAG_TOTEABLE,'NO TOTEABLE') = 'NO TOTEABLE',\n      m.FBM_QUANTITY, 0))                                                  AS UDS_NO_TOTEABLE,\n    SUM(m.FBM_QUANTITY)                                                    AS UDS_TOTALES\n  FROM `your-project.source.STOCK_MOVEMENTS` m\n  LEFT JOIN SKU s ON s.INVENTORY_ID = m.INVENTORY_ID\n  WHERE m.WAREHOUSE_ID       = 'CD-01'\n    AND m.FBM_REASON_PROCESS = 'put_away'\n    AND DATE(m.FBM_CREATED_DATE) >= DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY)\n    AND DATE(m.FBM_CREATED_DATE) <  CURRENT_DATE()\n    AND m.FBM_QUANTITY > 0\n  GROUP BY FECHA\n),\nVOL_ALL AS (\n  SELECT * FROM VOL_CHK\n  UNION ALL\n  SELECT * FROM VOL_DCI\n  UNION ALL\n  SELECT * FROM VOL_PA\n)\nSELECT\n  S.semana_fiscal,\n  V.FECHA,\n  V.PROCESO,\n  V.UDS_TOTALES,\n  V.UDS_TOTEABLE,\n  V.UDS_NO_TOTEABLE,\n  V.VOL_L_TOTAL,\n  V.VOL_L_TOTEABLE,\n  V.VOL_L_NO_TOTEABLE,\n  ROUND(SAFE_DIVIDE(V.UDS_TOTEABLE, V.UDS_TOTALES) * 100, 1)              AS PCT_TOTEABLE,\n  ROUND(SAFE_DIVIDE(V.VOL_L_TOTAL, V.UDS_TOTALES), 3)                     AS VOL_POND_TOTAL\nFROM VOL_ALL V\nJOIN SEMANA S\n  ON V.FECHA BETWEEN S.semana_inicio AND S.semana_fin\nORDER BY V.FECHA DESC, V.PROCESO",
+        "options": {}
+      },
+      "id": "536d82ac-2c10-40a4-9073-2be727a5e065",
+      "name": "BBDD_VOLUMETRIA",
+      "type": "n8n-nodes-base.googleBigQuery",
+      "position": [
+        -288,
+        2016
+      ],
+      "typeVersion": 2.1,
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "maxTries": 2,
+      "credentials": {
+        "googleGenericOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Google BigQuery OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "projectId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "=YOUR_GCP_PROJECT_ID"
+        },
+        "sqlQuery": "WITH SEMANA AS (\n  SELECT\n    DATE_TRUNC(d, WEEK(SUNDAY))                                             AS semana_inicio,\n    DATE_ADD(DATE_TRUNC(d, WEEK(SUNDAY)), INTERVAL 6 DAY)                  AS semana_fin,\n    CONCAT('W', LPAD(CAST(DATE_DIFF(DATE_TRUNC(d, WEEK(SUNDAY)),\n      DATE '2025-12-28', WEEK) + 1 AS STRING), 2, '0'),\n      '-', CAST(EXTRACT(YEAR FROM d) AS STRING))                           AS semana_fiscal\n  FROM UNNEST(GENERATE_DATE_ARRAY(\n    DATE_TRUNC(DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY), WEEK(SUNDAY)),\n    DATE_TRUNC(CURRENT_DATE(), WEEK(SUNDAY)),\n    INTERVAL 1 WEEK\n  )) AS d\n)\nSELECT\n  S.semana_fiscal,\n  DATE(A.START_DATE)                                                        AS FECHA,\n  SUM(CASE\n    WHEN A.HIRING_DATE = false\n    AND A.ROL IN ('rep','team_lead')\n    AND A.AT_NET IS NOT NULL\n    THEN A.NET_WORK_DURATION ELSE 0\n  END)                                                                      AS AT_NUMERADOR,\n  SUM(CASE\n    WHEN A.HIRING_DATE = false\n    AND A.ROL IN ('rep','team_lead')\n    AND A.AT_NET IS NOT NULL\n    THEN A.TARGET_DURATION ELSE 0\n  END)                                                                      AS AT_DENOMINADOR,\n  SAFE_DIVIDE(\n    SUM(CASE\n      WHEN A.HIRING_DATE = false\n      AND A.ROL IN ('rep','team_lead')\n      AND A.AT_NET IS NOT NULL\n      THEN A.NET_WORK_DURATION ELSE 0\n    END),\n    SUM(CASE\n      WHEN A.HIRING_DATE = false\n      AND A.ROL IN ('rep','team_lead')\n      AND A.AT_NET IS NOT NULL\n      THEN A.TARGET_DURATION ELSE 0\n    END)\n  )                                                                         AS AT_PCT\nFROM `your-project.source.AVAILABLE_TIME` A\nJOIN SEMANA S\n  ON DATE(A.START_DATE) BETWEEN S.semana_inicio AND S.semana_fin\nWHERE A.LOGISTIC_CENTER_ID = 'CD-01'\n  AND A.AREA               = 'inbound_fbm'\n  AND DATE(A.START_DATE)   >= DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY)\n  AND DATE(A.START_DATE)   < CURRENT_DATE()\nGROUP BY ALL\nORDER BY FECHA DESC",
+        "options": {}
+      },
+      "id": "ba9893bc-dc0e-4db6-bac8-21d69bb7be39",
+      "name": "BBDD_AT",
+      "type": "n8n-nodes-base.googleBigQuery",
+      "position": [
+        -288,
+        2272
+      ],
+      "typeVersion": 2.1,
+      "credentials": {
+        "googleGenericOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Google BigQuery OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "rows",
+        "options": {}
+      },
+      "id": "4e25e49b-b7a5-4ce0-b530-251cb303c58f",
+      "name": "AGG_PRODUCTIVIDAD",
+      "type": "n8n-nodes-base.aggregate",
+      "position": [
+        -48,
+        1504
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "rows",
+        "options": {}
+      },
+      "id": "c36d3365-38df-4bb9-88bb-3ea24ac2ae6e",
+      "name": "AGG_CALIDAD",
+      "type": "n8n-nodes-base.aggregate",
+      "position": [
+        -48,
+        1760
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "rows",
+        "options": {}
+      },
+      "id": "a64a3208-866c-41cd-8c16-44828a9fe775",
+      "name": "AGG_VOLUMETRIA",
+      "type": "n8n-nodes-base.aggregate",
+      "position": [
+        -48,
+        2016
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "rows",
+        "options": {}
+      },
+      "id": "59744d79-6b68-42d1-a934-51101be52183",
+      "name": "AGG_AT",
+      "type": "n8n-nodes-base.aggregate",
+      "position": [
+        -48,
+        2272
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $('HTTP_1_PROD').first().json.upload_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $('AGG_PRODUCTIVIDAD').first().json.rows }}",
+        "options": {}
+      },
+      "id": "eaaa1de3-5351-4ba9-ab1a-164d29ff6097",
+      "name": "HTTP_2_PROD",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        416,
+        1504
+      ],
+      "typeVersion": 4.3,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR_DASHBOARD_HOST/api/v1/documents/YOUR_DOCUMENT_ID/datasets/seg_semanal/upload-url",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "options": {}
+      },
+      "id": "79b53eb5-0c30-4a54-93a8-e3b01c66d329",
+      "name": "HTTP_1_PROD",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        208,
+        1504
+      ],
+      "typeVersion": 4.3,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "executeOnce": true,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Dashboard API Bearer token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://YOUR_DASHBOARD_HOST' + $('HTTP_1_PROD').first().json.publish_url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\"revision\": $('HTTP_1_PROD').first().json.revision} }}",
+        "options": {}
+      },
+      "id": "151c887c-3df2-4452-8aab-9d3422c5be51",
+      "name": "HTTP_FINAL_PROD",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        640,
+        1504
+      ],
+      "typeVersion": 4.3,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "executeOnce": true,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Dashboard API Bearer token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR_DASHBOARD_HOST/api/v1/documents/YOUR_DOCUMENT_ID/datasets/rep_detalle/upload-url",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "options": {}
+      },
+      "id": "183b2a2b-4231-448a-ba72-c54f7424f5d7",
+      "name": "HTTP_1_CALIDAD",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        208,
+        1760
+      ],
+      "typeVersion": 4.3,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "executeOnce": true,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Dashboard API Bearer token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $('HTTP_1_CALIDAD').first().json.upload_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $('AGG_CALIDAD').first().json.rows }}",
+        "options": {}
+      },
+      "id": "05d41bcf-0aa3-4d6c-a905-bbede17b3483",
+      "name": "HTTP_2_CALIDAD",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        416,
+        1760
+      ],
+      "typeVersion": 4.3,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://YOUR_DASHBOARD_HOST' + $('HTTP_1_CALIDAD').first().json.publish_url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\"revision\": $('HTTP_1_CALIDAD').first().json.revision} }}",
+        "options": {}
+      },
+      "id": "3b631790-014a-4874-867a-8b74b9471619",
+      "name": "HTTP_FINAL_CALIDAD",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        640,
+        1760
+      ],
+      "typeVersion": 4.3,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "executeOnce": true,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Dashboard API Bearer token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR_DASHBOARD_HOST/api/v1/documents/YOUR_DOCUMENT_ID/datasets/oport_detalle/upload-url",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "options": {}
+      },
+      "id": "519a2d99-f35f-4f19-8462-1acec5e7f273",
+      "name": "HTTP_1_VOL",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        208,
+        2016
+      ],
+      "typeVersion": 4.3,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "executeOnce": true,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Dashboard API Bearer token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $('HTTP_1_VOL').first().json.upload_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $('AGG_VOLUMETRIA').first().json.rows }}",
+        "options": {}
+      },
+      "id": "9bcbac7e-d520-47f6-888c-4748effa4722",
+      "name": "HTTP_2_VOL",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        416,
+        2016
+      ],
+      "typeVersion": 4.3,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://YOUR_DASHBOARD_HOST' + $('HTTP_1_VOL').first().json.publish_url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\"revision\": $('HTTP_1_VOL').first().json.revision} }}",
+        "options": {}
+      },
+      "id": "5895c611-dcf6-43f7-ae9f-9cef3dfa1185",
+      "name": "HTTP_FINAL_VOL",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        640,
+        2016
+      ],
+      "typeVersion": 4.3,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "executeOnce": true,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Dashboard API Bearer token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR_DASHBOARD_HOST/api/v1/documents/YOUR_DOCUMENT_ID/datasets/exp_roles/upload-url",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "options": {}
+      },
+      "id": "e82d44a6-81c5-4dbf-b8b7-e87b8fafc1be",
+      "name": "HTTP_1_AT",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        208,
+        2272
+      ],
+      "typeVersion": 4.3,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "executeOnce": true,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Dashboard API Bearer token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $('HTTP_1_AT').first().json.upload_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $('AGG_AT').first().json.rows }}",
+        "options": {}
+      },
+      "id": "8e72c791-9e1c-4e8d-8c74-f48830304b09",
+      "name": "HTTP_2_AT",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        416,
+        2272
+      ],
+      "typeVersion": 4.3,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://YOUR_DASHBOARD_HOST' + $('HTTP_1_AT').first().json.publish_url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\"revision\": $('HTTP_1_AT').first().json.revision} }}",
+        "options": {}
+      },
+      "id": "0021e423-12c1-4be1-b39d-5b322d576ee1",
+      "name": "HTTP_FINAL_AT",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        640,
+        2272
+      ],
+      "typeVersion": 4.3,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "executeOnce": true,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Dashboard API Bearer token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "projectId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "=YOUR_GCP_PROJECT_ID"
+        },
+        "sqlQuery": "WITH SEMANA AS (\n  SELECT\n    DATE_TRUNC(d, WEEK(SUNDAY))                                             AS semana_inicio,\n    DATE_ADD(DATE_TRUNC(d, WEEK(SUNDAY)), INTERVAL 6 DAY)                  AS semana_fin,\n    CONCAT('W', LPAD(CAST(DATE_DIFF(DATE_TRUNC(d, WEEK(SUNDAY)),\n      DATE '2025-12-28', WEEK) + 1 AS STRING), 2, '0'),\n      '-', CAST(EXTRACT(YEAR FROM d) AS STRING))                           AS semana_fiscal\n  FROM UNNEST(GENERATE_DATE_ARRAY(\n    DATE_TRUNC(DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY), WEEK(SUNDAY)),\n    DATE_TRUNC(CURRENT_DATE(), WEEK(SUNDAY)),\n    INTERVAL 1 WEEK\n  )) AS d\n)\nSELECT\n  S.semana_fiscal,\n  DATE(L.START_DATE)                                                       AS FECHA,\n\n  -- INP = unidades putaway / NET_HH TOTAL del area inbound\n  SAFE_DIVIDE(\n    SUM(IF(L.PROCESS = 'putaway', L.UNITS, 0)),\n    SUM(L.TIEMPO_SISTEMICO + L.TIEMPO_NO_SISTEMICO + L.TND + L.EXTENDED_IDLE_TIME)\n  )                                                                         AS INP,\n\n  -- Unidades CH + DCI\n  SUM(IF(L.PROCESS IN ('checkin','direct_checkin'), L.UNITS, 0))           AS UNID_CH_DCI,\n\n  -- Unidades Putaway\n  SUM(IF(L.PROCESS = 'putaway', L.UNITS, 0))                               AS UNID_PUTAWAY,\n\n  -- Neta Receiving\n  SAFE_DIVIDE(\n    SUM(IF(L.PROCESS = 'receiving', L.UNITS, 0)),\n    SUM(IF(L.PROCESS = 'receiving',\n      L.TIEMPO_SISTEMICO + L.TIEMPO_NO_SISTEMICO + L.TND + L.EXTENDED_IDLE_TIME, 0))\n  )                                                                         AS NETA_RECEIVING,\n\n  -- Neta Checkin\n  SAFE_DIVIDE(\n    SUM(IF(L.PROCESS = 'checkin', L.UNITS, 0)),\n    SUM(IF(L.PROCESS = 'checkin',\n      L.TIEMPO_SISTEMICO + L.TIEMPO_NO_SISTEMICO + L.TND + L.EXTENDED_IDLE_TIME, 0))\n  )                                                                         AS NETA_CHECKIN,\n\n  -- Neta DCI\n  SAFE_DIVIDE(\n    SUM(IF(L.PROCESS = 'direct_checkin', L.UNITS, 0)),\n    SUM(IF(L.PROCESS = 'direct_checkin',\n      L.TIEMPO_SISTEMICO + L.TIEMPO_NO_SISTEMICO + L.TND + L.EXTENDED_IDLE_TIME, 0))\n  )                                                                         AS NETA_DCI,\n\n  -- Neta Putaway\n  SAFE_DIVIDE(\n    SUM(IF(L.PROCESS = 'putaway', L.UNITS, 0)),\n    SUM(IF(L.PROCESS = 'putaway',\n      L.TIEMPO_SISTEMICO + L.TIEMPO_NO_SISTEMICO + L.TND + L.EXTENDED_IDLE_TIME, 0))\n  )                                                                         AS NETA_PUTAWAY,\n\n  -- TPH CH + DCI\n  SAFE_DIVIDE(\n    SUM(IF(L.PROCESS IN ('checkin','direct_checkin'), L.UNITS, 0)),\n    SUM(IF(L.PROCESS IN ('checkin','direct_checkin'),\n      L.TIEMPO_SISTEMICO + L.TIEMPO_NO_SISTEMICO + L.TND + L.EXTENDED_IDLE_TIME, 0))\n  )                                                                         AS TPH_CH_DCI,\n\n  -- TPH Putaway\n  SAFE_DIVIDE(\n    SUM(IF(L.PROCESS = 'putaway', L.UNITS, 0)),\n    SUM(IF(L.PROCESS = 'putaway',\n      L.TIEMPO_SISTEMICO + L.TIEMPO_NO_SISTEMICO + L.TND + L.EXTENDED_IDLE_TIME, 0))\n  )                                                                         AS TPH_PUTAWAY,\n\n  -- Share DCI\n  SAFE_DIVIDE(\n    SUM(IF(L.PROCESS = 'direct_checkin', L.UNITS, 0)),\n    SUM(IF(L.PROCESS IN ('checkin','direct_checkin'), L.UNITS, 0))\n  ) * 100                                                                   AS SHARE_DCI,\n\n  -- Targets\n  MAX(IF(L.PROCESS = 'putaway',        L.TARGET_AREA_PNET,                NULL)) AS TARGET_INP,\n  MAX(IF(L.PROCESS = 'receiving',      L.TARGET_PROCESS_NET_PRODUCTIVITY,  NULL)) AS TARGET_NETA_RECEIVING,\n  MAX(IF(L.PROCESS = 'checkin',        L.TARGET_PROCESS_NET_PRODUCTIVITY,  NULL)) AS TARGET_NETA_CHECKIN,\n  MAX(IF(L.PROCESS = 'direct_checkin', L.TARGET_PROCESS_NET_PRODUCTIVITY,  NULL)) AS TARGET_NETA_DCI,\n  MAX(IF(L.PROCESS = 'putaway',        L.TARGET_PROCESS_NET_PRODUCTIVITY,  NULL)) AS TARGET_NETA_PUTAWAY\n\nFROM `your-project.source.OPERATOR_PRODUCTIVITY` L\nJOIN SEMANA S\n  ON DATE(L.START_DATE) BETWEEN S.semana_inicio AND S.semana_fin\nWHERE L.LOGISTIC_CENTER_ID = 'CD-01'\n  AND L.AREA = 'inbound'\n  AND DATE(L.START_DATE) >= DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY)\n  AND DATE(L.START_DATE) < CURRENT_DATE()\nGROUP BY S.semana_fiscal, FECHA\nORDER BY FECHA DESC",
+        "options": {}
+      },
+      "id": "2ee04efc-1598-41e4-9e9b-101329dce071",
+      "name": "BBDD_PRODUCTIVIDAD_DIARIO",
+      "type": "n8n-nodes-base.googleBigQuery",
+      "position": [
+        -288,
+        2480
+      ],
+      "typeVersion": 2.1,
+      "credentials": {
+        "googleGenericOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Google BigQuery OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "rows",
+        "options": {}
+      },
+      "id": "7e4f6ce1-5bb3-4ced-b12d-f045e076b046",
+      "name": "AGG_PRODUCTIVIDAD_DIARIO",
+      "type": "n8n-nodes-base.aggregate",
+      "position": [
+        -48,
+        2480
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "projectId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "=YOUR_GCP_PROJECT_ID"
+        },
+        "sqlQuery": "WITH\nSEMANA AS (\n  SELECT\n    DATE_TRUNC(d, WEEK(SUNDAY)) AS semana_inicio,\n    DATE_ADD(DATE_TRUNC(d, WEEK(SUNDAY)), INTERVAL 6 DAY) AS semana_fin,\n    CONCAT('W', LPAD(CAST(DATE_DIFF(DATE_TRUNC(d, WEEK(SUNDAY)), DATE '2025-12-28', WEEK) + 1 AS STRING), 2, '0'),\n      '-', CAST(EXTRACT(YEAR FROM d) AS STRING)) AS semana_fiscal\n  FROM UNNEST(GENERATE_DATE_ARRAY(\n    DATE_TRUNC(DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY), WEEK(SUNDAY)),\n    DATE_TRUNC(CURRENT_DATE(), WEEK(SUNDAY)),\n    INTERVAL 1 WEEK\n  )) AS d\n),\nSLA_D AS (\n  SELECT\n    DATE(START_DATE)                              AS FECHA,\n    SAFE_DIVIDE(NUMERATOR, DENOMINATOR)           AS SLA_PCT,\n    NUMERATOR                                     AS SLA_NUMERATOR,\n    DENOMINATOR                                   AS SLA_DENOMINATOR\n  FROM `your-project.source.INBOUND_SLA`\n  WHERE WAREHOUSE_ID = 'CD-01'\n    AND DATE(START_DATE) >= DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY)\n    AND DATE(START_DATE) < CURRENT_DATE()\n),\nREA_D AS (\n  SELECT\n    DATE(R.FECHA_REAPERTURA)                      AS FECHA,\n    SUM(IF(R.ESTADO_EXC = 'FUERA DE 48h', 1, 0)) AS REAPERTURAS_FUERA_SLA,\n    MAX(I.INB)                                    AS INB_TOTALES,\n    SAFE_DIVIDE(\n      SUM(IF(R.ESTADO_EXC = 'FUERA DE 48h', 1, 0)),\n      MAX(I.INB)\n    )                                             AS PCT_REAPERTURAS\n  FROM `your-project.cx.REOPENINGS` R\n  LEFT JOIN (\n    SELECT\n      DATE(INB_RECEIVED_DATETIME) AS FECHA,\n      COUNT(DISTINCT INBOUND_ID)  AS INB\n    FROM `your-project.cx.INBOUND_CONTACTS_AGG`\n    WHERE WAREHOUSE = 'CD-01'\n      AND DATE(INB_RECEIVED_DATETIME) >= DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY)\n    GROUP BY 1\n  ) I ON I.FECHA = DATE(R.FECHA_REAPERTURA)\n  WHERE R.WAREHOUSE = 'CD-01'\n    AND DATE(R.FECHA_REAPERTURA) >= DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY)\n    AND DATE(R.FECHA_REAPERTURA) < CURRENT_DATE()\n    AND R.ESTADO_EXC = 'FUERA DE 48h'\n  GROUP BY 1\n),\nDPMO_CRUCE_D AS (\n  SELECT\n    DATE(d.DATE_FINISH)                           AS FECHA,\n    ROUND(SAFE_DIVIDE(COUNT(1), MAX(p.INBOUND_SKU)) * 1000000, 0) AS DPMO_CRUCE\n  FROM `your-project.cx.SKU_CLAIMS` d\n  LEFT JOIN (\n    SELECT\n      DATE(MIN_ARRIVAL_DATETIME_TZ) AS FECHA_INB,\n      COUNT(INBOUND_SKU)            AS INBOUND_SKU\n    FROM `your-project.cx.SKU_PROCESSED`\n    WHERE WAREHOUSE = 'CD-01'\n    GROUP BY 1\n  ) p ON DATE(d.DATE_FINISH) = p.FECHA_INB\n  WHERE d.WAREHOUSE = 'CD-01'\n    AND d.CULPABILIDADE = 'ERROR OPERATIVO'\n    AND d.CDU_GROUP IN ('CRUCE SKU','CRUCE IS')\n    AND DATE(d.DATE_FINISH) >= DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY)\n    AND DATE(d.DATE_FINISH) < CURRENT_DATE()\n  GROUP BY 1\n),\nDPMO_FALT_D AS (\n  SELECT\n    DATE(d.DATE_FINISH)                           AS FECHA,\n    ROUND(SAFE_DIVIDE(\n      COUNT(IF(d.REASON NOT IN ('SIN REAPERTURA','SIN REAPERTURA - FPP'), d.SKU, NULL)),\n      MAX(p.INBOUND_SKU)\n    ) * 1000000, 0)                               AS DPMO_FALTANTE\n  FROM `your-project.cx.SKU_CLAIMS` d\n  LEFT JOIN (\n    SELECT\n      DATE(MIN_ARRIVAL_DATETIME_TZ) AS FECHA_INB,\n      COUNT(INBOUND_SKU)            AS INBOUND_SKU\n    FROM `your-project.cx.SKU_PROCESSED`\n    WHERE WAREHOUSE = 'CD-01'\n    GROUP BY 1\n  ) p ON DATE(d.DATE_FINISH) = p.FECHA_INB\n  WHERE d.WAREHOUSE = 'CD-01'\n    AND d.CULPABILIDADE = 'ERROR OPERATIVO'\n    AND d.CDU_GROUP = 'FALTANTES'\n    AND DATE(d.DATE_FINISH) >= DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY)\n    AND DATE(d.DATE_FINISH) < CURRENT_DATE()\n  GROUP BY 1\n),\nCR_D AS (\n  SELECT\n    DATE(DATA_ACONTECIMENTO)                      AS FECHA,\n    SUM(CX_CASE_ID)                               AS SUM_CX_CASE_ID,\n    SUM(ENVIOS)                                   AS SUM_ENVIOS,\n    SAFE_DIVIDE(SUM(CX_CASE_ID), SUM(ENVIOS))     AS CONTACT_RATE\n  FROM `your-project.cx.CONTACT_RATE`\n  WHERE WAREHOUSE = 'CD-01'\n    AND DATE(DATA_ACONTECIMENTO) >= DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY)\n    AND DATE(DATA_ACONTECIMENTO) < CURRENT_DATE()\n  GROUP BY 1\n),\nTEO_D AS (\n  SELECT\n    DATE                                          AS FECHA,\n    SAFE_DIVIDE(\n      SUM(IF(PROCESS = 'inbound audit', UNITS_TEO_INB, 0)),\n      SUM(UNITS_GNP)\n    )                                             AS TEO_INBOUND_AUDIT\n  FROM `your-project.source.TEO_SUMMARY`\n  WHERE WAREHOUSE_ID = 'CD-01'\n    AND SITE_ID = 'MLC'\n    AND DATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY)\n    AND DATE < CURRENT_DATE()\n  GROUP BY 1\n),\n-- AUD_D CORREGIDO: DPMO = ERROR_UNITS / UNID * 1.000.000\nAUD_D AS (\n  SELECT\n    DATE(A.FBM_CREATED_DATE)                      AS FECHA,\n    SUM(A.ERROR_UNITS)                            AS ERROR_UNITS,\n    MAX(P.Unid)                                   AS UNID,\n    ROUND(\n      SAFE_DIVIDE(SUM(A.ERROR_UNITS), MAX(P.Unid)) * 1000000, 0\n    )                                             AS INBOUND_AUDIT\n  FROM `your-project.source.INBOUND_AUDIT` A\n  LEFT JOIN (\n    SELECT\n      DATE(START_DATE)  AS FECHA,\n      SUM(UNITS)        AS Unid\n    FROM `your-project.source.EMPLOYEE_ATTRIBUTES`\n    WHERE LOGISTIC_CENTER_ID = 'CD-01'\n      AND PROCESS    = 'inbound'\n      AND SUBPROCESS = 'putaway'\n      AND START_DATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY)\n    GROUP BY 1\n  ) P ON P.FECHA = DATE(A.FBM_CREATED_DATE)\n  WHERE A.WAREHOUSE_ID = 'CD-01'\n    AND DATE(A.FBM_CREATED_DATE) >= DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY)\n    AND DATE(A.FBM_CREATED_DATE) < CURRENT_DATE()\n  GROUP BY 1\n)\n\nSELECT\n  S.semana_fiscal,\n  SLA_D.FECHA,\n  SLA_D.SLA_PCT,\n  SLA_D.SLA_NUMERATOR,\n  SLA_D.SLA_DENOMINATOR,\n  REA_D.REAPERTURAS_FUERA_SLA,\n  REA_D.INB_TOTALES,\n  REA_D.PCT_REAPERTURAS,\n  DPMO_CRUCE_D.DPMO_CRUCE,\n  DPMO_FALT_D.DPMO_FALTANTE,\n  CR_D.CONTACT_RATE,\n  CR_D.SUM_CX_CASE_ID,\n  CR_D.SUM_ENVIOS,\n  TEO_D.TEO_INBOUND_AUDIT,\n  AUD_D.INBOUND_AUDIT\nFROM SLA_D\nJOIN SEMANA S\n  ON SLA_D.FECHA BETWEEN S.semana_inicio AND S.semana_fin\nLEFT JOIN REA_D\n  ON REA_D.FECHA        = SLA_D.FECHA\nLEFT JOIN DPMO_CRUCE_D\n  ON DPMO_CRUCE_D.FECHA = SLA_D.FECHA\nLEFT JOIN DPMO_FALT_D\n  ON DPMO_FALT_D.FECHA  = SLA_D.FECHA\nLEFT JOIN CR_D\n  ON CR_D.FECHA         = SLA_D.FECHA\nLEFT JOIN TEO_D\n  ON TEO_D.FECHA        = SLA_D.FECHA\nLEFT JOIN AUD_D\n  ON AUD_D.FECHA        = SLA_D.FECHA\nORDER BY SLA_D.FECHA DESC",
+        "options": {}
+      },
+      "id": "f69f71eb-57b4-4fe9-9150-566e7c75ecc5",
+      "name": "BBDD_CALIDAD_DIARIO",
+      "type": "n8n-nodes-base.googleBigQuery",
+      "position": [
+        -288,
+        2736
+      ],
+      "typeVersion": 2.1,
+      "credentials": {
+        "googleGenericOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Google BigQuery OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR_DASHBOARD_HOST/api/v1/documents/YOUR_DOCUMENT_ID/datasets/seg_diario/upload-url",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "options": {}
+      },
+      "id": "a1c967c1-4c0d-4d46-ba78-6c1048de4c44",
+      "name": "HTTP_1_PROD_DIARIO",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        208,
+        2480
+      ],
+      "typeVersion": 4.3,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "executeOnce": true,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Dashboard API Bearer token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $('HTTP_1_PROD_DIARIO').first().json.upload_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $('AGG_PRODUCTIVIDAD_DIARIO').first().json.rows }}",
+        "options": {}
+      },
+      "id": "423b3aa4-1ded-4e26-a8ce-02360f4b35dd",
+      "name": "HTTP_2_PROD_DIARIO",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        416,
+        2480
+      ],
+      "typeVersion": 4.3,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://YOUR_DASHBOARD_HOST' + $('HTTP_1_PROD_DIARIO').first().json.publish_url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\"revision\": $('HTTP_1_PROD_DIARIO').first().json.revision} }}",
+        "options": {}
+      },
+      "id": "fa85b489-a988-4c32-b60f-b6e3dc2fbe14",
+      "name": "HTTP_FINAL_PROD_DIARIO",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        640,
+        2480
+      ],
+      "typeVersion": 4.3,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "executeOnce": true,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Dashboard API Bearer token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "rows",
+        "options": {}
+      },
+      "id": "a7529ebd-f690-405f-9a8d-35af99ec6123",
+      "name": "AGG_CALIDAD_DIARIO",
+      "type": "n8n-nodes-base.aggregate",
+      "position": [
+        -48,
+        2736
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR_DASHBOARD_HOST/api/v1/documents/YOUR_DOCUMENT_ID/datasets/rep_detalle_diario/upload-url",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "options": {}
+      },
+      "id": "af811098-d392-4f21-af05-af94971e2cc2",
+      "name": "HTTP_1_CALIDAD_DIARIO",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        208,
+        2736
+      ],
+      "typeVersion": 4.3,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "executeOnce": true,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Dashboard API Bearer token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $('HTTP_1_CALIDAD_DIARIO').first().json.upload_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $('AGG_CALIDAD_DIARIO').first().json.rows }}",
+        "options": {}
+      },
+      "id": "69d402c9-453a-47d0-9719-6d32d54bdc3c",
+      "name": "HTTP_2_CALIDAD_DIARIO",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        416,
+        2736
+      ],
+      "typeVersion": 4.3,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://YOUR_DASHBOARD_HOST' + $('HTTP_1_CALIDAD_DIARIO').first().json.publish_url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\"revision\": $('HTTP_1_CALIDAD_DIARIO').first().json.revision} }}",
+        "options": {}
+      },
+      "id": "7a8ecd6a-b85f-45ce-b81e-6c573a7955c9",
+      "name": "HTTP_FINAL_CALIDAD_DIARIO",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        640,
+        2736
+      ],
+      "typeVersion": 4.3,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "executeOnce": true,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Dashboard API Bearer token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "projectId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "=YOUR_GCP_PROJECT_ID"
+        },
+        "sqlQuery": "WITH\nSEMANA AS (\n  SELECT\n    DATE_TRUNC(d, WEEK(SUNDAY))                                             AS semana_inicio,\n    DATE_ADD(DATE_TRUNC(d, WEEK(SUNDAY)), INTERVAL 6 DAY)                  AS semana_fin,\n    CONCAT('W', LPAD(CAST(DATE_DIFF(DATE_TRUNC(d, WEEK(SUNDAY)),\n      DATE '2025-12-28', WEEK) + 1 AS STRING), 2, '0'),\n      '-', CAST(EXTRACT(YEAR FROM d) AS STRING))                           AS semana_fiscal\n  FROM UNNEST(GENERATE_DATE_ARRAY(\n    DATE_TRUNC(DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY), WEEK(SUNDAY)),\n    DATE_TRUNC(CURRENT_DATE(), WEEK(SUNDAY)),\n    INTERVAL 1 WEEK\n  )) AS d\n),\nSKU AS (\n  SELECT\n    INVENTORY_ID,\n    CASE WHEN FLAG_TOTABLE = TRUE THEN 'TOTEABLE' ELSE 'NO TOTEABLE' END   AS FLAG_TOTEABLE,\n    COALESCE(\n      ITE_VOLUMEN,\n      CASE\n        WHEN ITE_HEIGHT > 0 AND ITE_LENGTH > 0 AND ITE_WIDTH > 0\n        THEN ITE_HEIGHT * ITE_LENGTH * ITE_WIDTH / 1000.0\n        ELSE NULL\n      END\n    )                                                                       AS V_LITROS\n  FROM `your-project.source.SKU_DETAILS`\n  WHERE LOGISTIC_CENTER_ID = 'CD-01'\n    AND SIT_SITE_ID        = 'MLC'\n  QUALIFY ROW_NUMBER() OVER (\n    PARTITION BY INVENTORY_ID\n    ORDER BY (ITE_VOLUMEN IS NOT NULL) DESC, (ITE_HEIGHT IS NOT NULL) DESC\n  ) = 1\n),\nOPS AS (\n  SELECT DISTINCT\n    CAST(OPERATOR_ID AS STRING)  AS OPERATOR_ID,\n    DATE(START_DATE)             AS FECHA,\n    PROCESS                      AS PROCESO\n  FROM `your-project.source.OPERATOR_PRODUCTIVITY`\n  WHERE AREA               = 'inbound'\n    AND PROCESS            IN ('checkin','direct_checkin')\n    AND LOGISTIC_CENTER_ID = 'CD-01'\n    AND DATE(START_DATE)   >= DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY)\n    AND DATE(START_DATE)   < CURRENT_DATE()\n),\nVOL_CHK AS (\n  SELECT\n    'checkin'                                                               AS PROCESO,\n    DATE(`your-project.udf.FN_TIMEZONE`('MLC', m.AUD_INS_DTTM)) AS FECHA,\n    ROUND(SUM(m.FBM_QUANTITY * s.V_LITROS), 1)                             AS VOL_L_TOTAL,\n    ROUND(SUM(IF(IFNULL(s.FLAG_TOTEABLE,'NO TOTEABLE') = 'TOTEABLE',\n      m.FBM_QUANTITY * s.V_LITROS, NULL)), 1)                              AS VOL_L_TOTEABLE,\n    ROUND(SUM(IF(IFNULL(s.FLAG_TOTEABLE,'NO TOTEABLE') = 'NO TOTEABLE',\n      m.FBM_QUANTITY * s.V_LITROS, NULL)), 1)                              AS VOL_L_NO_TOTEABLE,\n    SUM(IF(IFNULL(s.FLAG_TOTEABLE,'NO TOTEABLE') = 'TOTEABLE',\n      m.FBM_QUANTITY, 0))                                                  AS UDS_TOTEABLE,\n    SUM(IF(IFNULL(s.FLAG_TOTEABLE,'NO TOTEABLE') = 'NO TOTEABLE',\n      m.FBM_QUANTITY, 0))                                                  AS UDS_NO_TOTEABLE,\n    SUM(m.FBM_QUANTITY)                                                    AS UDS_TOTALES\n  FROM `your-project.source.STOCK_MOVEMENTS` m\n  INNER JOIN OPS ops\n    ON  ops.OPERATOR_ID = CAST(m.FBM_USER_ID AS STRING)\n    AND ops.FECHA = DATE(`your-project.udf.FN_TIMEZONE`('MLC', m.AUD_INS_DTTM))\n    AND ops.PROCESO = 'checkin'\n  LEFT JOIN SKU s ON s.INVENTORY_ID = m.INVENTORY_ID\n  WHERE m.WAREHOUSE_ID       = 'CD-01'\n    AND m.FBM_REASON_PROCESS = 'inbound'\n    AND m.ADDRESS_FROM       IS NULL\n    AND m.ADDRESS_TO         LIKE 'MU-%'\n    AND m.AUD_INS_DTTM >= DATETIME(TIMESTAMP(DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY), 'America/Santiago'))\n    AND m.AUD_INS_DTTM <  DATETIME(TIMESTAMP(CURRENT_DATE(), 'America/Santiago'))\n  GROUP BY FECHA\n),\nVOL_DCI AS (\n  SELECT\n    'direct_checkin'                                                        AS PROCESO,\n    DATE(`your-project.udf.FN_TIMEZONE`('MLC', m.AUD_INS_DTTM)) AS FECHA,\n    ROUND(SUM(m.FBM_QUANTITY * s.V_LITROS), 1)                             AS VOL_L_TOTAL,\n    ROUND(SUM(IF(IFNULL(s.FLAG_TOTEABLE,'NO TOTEABLE') = 'TOTEABLE',\n      m.FBM_QUANTITY * s.V_LITROS, NULL)), 1)                              AS VOL_L_TOTEABLE,\n    ROUND(SUM(IF(IFNULL(s.FLAG_TOTEABLE,'NO TOTEABLE') = 'NO TOTEABLE',\n      m.FBM_QUANTITY * s.V_LITROS, NULL)), 1)                              AS VOL_L_NO_TOTEABLE,\n    SUM(IF(IFNULL(s.FLAG_TOTEABLE,'NO TOTEABLE') = 'TOTEABLE',\n      m.FBM_QUANTITY, 0))                                                  AS UDS_TOTEABLE,\n    SUM(IF(IFNULL(s.FLAG_TOTEABLE,'NO TOTEABLE') = 'NO TOTEABLE',\n      m.FBM_QUANTITY, 0))                                                  AS UDS_NO_TOTEABLE,\n    SUM(m.FBM_QUANTITY)                                                    AS UDS_TOTALES\n  FROM `your-project.source.STOCK_MOVEMENTS` m\n  INNER JOIN OPS ops\n    ON  ops.OPERATOR_ID = CAST(m.FBM_USER_ID AS STRING)\n    AND ops.FECHA = DATE(`your-project.udf.FN_TIMEZONE`('MLC', m.AUD_INS_DTTM))\n    AND ops.PROCESO = 'direct_checkin'\n  LEFT JOIN SKU s ON s.INVENTORY_ID = m.INVENTORY_ID\n  WHERE m.WAREHOUSE_ID       = 'CD-01'\n    AND m.FBM_REASON_PROCESS = 'inbound'\n    AND m.ADDRESS_FROM       IS NULL\n    AND m.ADDRESS_TO         LIKE 'MU-%'\n    AND m.AUD_INS_DTTM >= DATETIME(TIMESTAMP(DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY), 'America/Santiago'))\n    AND m.AUD_INS_DTTM <  DATETIME(TIMESTAMP(CURRENT_DATE(), 'America/Santiago'))\n  GROUP BY FECHA\n),\nVOL_PA AS (\n  SELECT\n    'putaway'                                                               AS PROCESO,\n    DATE(m.FBM_CREATED_DATE)                                               AS FECHA,\n    ROUND(SUM(m.FBM_QUANTITY * s.V_LITROS), 1)                             AS VOL_L_TOTAL,\n    ROUND(SUM(IF(IFNULL(s.FLAG_TOTEABLE,'NO TOTEABLE') = 'TOTEABLE',\n      m.FBM_QUANTITY * s.V_LITROS, NULL)), 1)                              AS VOL_L_TOTEABLE,\n    ROUND(SUM(IF(IFNULL(s.FLAG_TOTEABLE,'NO TOTEABLE') = 'NO TOTEABLE',\n      m.FBM_QUANTITY * s.V_LITROS, NULL)), 1)                              AS VOL_L_NO_TOTEABLE,\n    SUM(IF(IFNULL(s.FLAG_TOTEABLE,'NO TOTEABLE') = 'TOTEABLE',\n      m.FBM_QUANTITY, 0))                                                  AS UDS_TOTEABLE,\n    SUM(IF(IFNULL(s.FLAG_TOTEABLE,'NO TOTEABLE') = 'NO TOTEABLE',\n      m.FBM_QUANTITY, 0))                                                  AS UDS_NO_TOTEABLE,\n    SUM(m.FBM_QUANTITY)                                                    AS UDS_TOTALES\n  FROM `your-project.source.STOCK_MOVEMENTS` m\n  LEFT JOIN SKU s ON s.INVENTORY_ID = m.INVENTORY_ID\n  WHERE m.WAREHOUSE_ID       = 'CD-01'\n    AND m.FBM_REASON_PROCESS = 'put_away'\n    AND DATE(m.FBM_CREATED_DATE) >= DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY)\n    AND DATE(m.FBM_CREATED_DATE) <  CURRENT_DATE()\n    AND m.FBM_QUANTITY > 0\n  GROUP BY FECHA\n),\nVOL_ALL AS (\n  SELECT * FROM VOL_CHK\n  UNION ALL\n  SELECT * FROM VOL_DCI\n  UNION ALL\n  SELECT * FROM VOL_PA\n)\nSELECT\n  S.semana_fiscal,\n  V.FECHA,\n  V.PROCESO,\n  V.UDS_TOTALES,\n  V.UDS_TOTEABLE,\n  V.UDS_NO_TOTEABLE,\n  V.VOL_L_TOTAL,\n  V.VOL_L_TOTEABLE,\n  V.VOL_L_NO_TOTEABLE,\n  ROUND(SAFE_DIVIDE(V.UDS_TOTEABLE, V.UDS_TOTALES) * 100, 1)              AS PCT_TOTEABLE,\n  ROUND(SAFE_DIVIDE(V.VOL_L_TOTAL, V.UDS_TOTALES), 3)                     AS VOL_POND_TOTAL\nFROM VOL_ALL V\nJOIN SEMANA S\n  ON V.FECHA BETWEEN S.semana_inicio AND S.semana_fin\nORDER BY V.FECHA DESC, V.PROCESO",
+        "options": {}
+      },
+      "id": "2d8ba7f5-f158-44e7-b391-05c7aaf9d948",
+      "name": "BBDD_VOLUMETRIA_DIARIO",
+      "type": "n8n-nodes-base.googleBigQuery",
+      "position": [
+        -288,
+        2992
+      ],
+      "typeVersion": 2.1,
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "maxTries": 2,
+      "credentials": {
+        "googleGenericOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Google BigQuery OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "rows",
+        "options": {}
+      },
+      "id": "6ade5bfa-fd7e-47a8-8ebf-7ab2b997308e",
+      "name": "AGG_VOLUMETRIA_DIARIO",
+      "type": "n8n-nodes-base.aggregate",
+      "position": [
+        -48,
+        2992
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR_DASHBOARD_HOST/api/v1/documents/YOUR_DOCUMENT_ID/datasets/oport_detalle_diario/upload-url",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "options": {}
+      },
+      "id": "8a7958d9-7eed-475c-afaf-e68d8d3964e8",
+      "name": "HTTP_1_VOL_DIARIO",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        208,
+        2992
+      ],
+      "typeVersion": 4.3,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "executeOnce": true,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Dashboard API Bearer token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $('HTTP_1_VOL_DIARIO').first().json.upload_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $('AGG_VOLUMETRIA_DIARIO').first().json.rows }}",
+        "options": {}
+      },
+      "id": "ad364f91-a74b-44d6-abb1-19b9cf0da734",
+      "name": "HTTP_2_VOL_DIARIO",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        416,
+        2992
+      ],
+      "typeVersion": 4.3,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://YOUR_DASHBOARD_HOST' + $('HTTP_1_VOL_DIARIO').first().json.publish_url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\"revision\": $('HTTP_1_VOL_DIARIO').first().json.revision} }}",
+        "options": {}
+      },
+      "id": "7008903c-d307-4e21-9091-7fe6214eeea9",
+      "name": "HTTP_FINAL_VOL_DIARIO",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        640,
+        2992
+      ],
+      "typeVersion": 4.3,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "executeOnce": true,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Dashboard API Bearer token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "projectId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "=YOUR_GCP_PROJECT_ID"
+        },
+        "sqlQuery": "WITH SEMANA AS (\n  SELECT\n    DATE_TRUNC(d, WEEK(SUNDAY))                                             AS semana_inicio,\n    DATE_ADD(DATE_TRUNC(d, WEEK(SUNDAY)), INTERVAL 6 DAY)                  AS semana_fin,\n    CONCAT('W', LPAD(CAST(DATE_DIFF(DATE_TRUNC(d, WEEK(SUNDAY)),\n      DATE '2025-12-28', WEEK) + 1 AS STRING), 2, '0'),\n      '-', CAST(EXTRACT(YEAR FROM d) AS STRING))                           AS semana_fiscal\n  FROM UNNEST(GENERATE_DATE_ARRAY(\n    DATE_TRUNC(DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY), WEEK(SUNDAY)),\n    DATE_TRUNC(CURRENT_DATE(), WEEK(SUNDAY)),\n    INTERVAL 1 WEEK\n  )) AS d\n)\nSELECT\n  S.semana_fiscal,\n  DATE(A.START_DATE)                                                        AS FECHA,\n  SUM(CASE\n    WHEN A.HIRING_DATE = false\n    AND A.ROL IN ('rep','team_lead')\n    AND A.AT_NET IS NOT NULL\n    THEN A.NET_WORK_DURATION ELSE 0\n  END)                                                                      AS AT_NUMERADOR,\n  SUM(CASE\n    WHEN A.HIRING_DATE = false\n    AND A.ROL IN ('rep','team_lead')\n    AND A.AT_NET IS NOT NULL\n    THEN A.TARGET_DURATION ELSE 0\n  END)                                                                      AS AT_DENOMINADOR,\n  SAFE_DIVIDE(\n    SUM(CASE\n      WHEN A.HIRING_DATE = false\n      AND A.ROL IN ('rep','team_lead')\n      AND A.AT_NET IS NOT NULL\n      THEN A.NET_WORK_DURATION ELSE 0\n    END),\n    SUM(CASE\n      WHEN A.HIRING_DATE = false\n      AND A.ROL IN ('rep','team_lead')\n      AND A.AT_NET IS NOT NULL\n      THEN A.TARGET_DURATION ELSE 0\n    END)\n  )                                                                         AS AT_PCT\nFROM `your-project.source.AVAILABLE_TIME` A\nJOIN SEMANA S\n  ON DATE(A.START_DATE) BETWEEN S.semana_inicio AND S.semana_fin\nWHERE A.LOGISTIC_CENTER_ID = 'CD-01'\n  AND A.AREA               = 'inbound_fbm'\n  AND DATE(A.START_DATE)   >= DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY)\n  AND DATE(A.START_DATE)   < CURRENT_DATE()\nGROUP BY ALL\nORDER BY FECHA DESC",
+        "options": {}
+      },
+      "id": "0a102124-b892-49ed-bba2-e03bf5a4357e",
+      "name": "BBDD_AT_DIARIO",
+      "type": "n8n-nodes-base.googleBigQuery",
+      "position": [
+        -288,
+        3248
+      ],
+      "typeVersion": 2.1,
+      "credentials": {
+        "googleGenericOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Google BigQuery OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "rows",
+        "options": {}
+      },
+      "id": "6281c968-5321-46e1-845f-62d0a954f6e9",
+      "name": "AGG_AT_DIARIO",
+      "type": "n8n-nodes-base.aggregate",
+      "position": [
+        -48,
+        3248
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR_DASHBOARD_HOST/api/v1/documents/YOUR_DOCUMENT_ID/datasets/exp_roles_diario/upload-url",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "options": {}
+      },
+      "id": "c3baf753-7779-4aeb-8fd3-dc53b24aa294",
+      "name": "HTTP_1_AT_DIARIO",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        208,
+        3248
+      ],
+      "typeVersion": 4.3,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "executeOnce": true,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Dashboard API Bearer token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $('HTTP_1_AT_DIARIO').first().json.upload_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $('AGG_AT_DIARIO').first().json.rows }}",
+        "options": {}
+      },
+      "id": "297b20b0-aed9-446b-ac63-2752b61288b4",
+      "name": "HTTP_2_AT_DIARIO",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        416,
+        3248
+      ],
+      "typeVersion": 4.3,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://YOUR_DASHBOARD_HOST' + $('HTTP_1_AT_DIARIO').first().json.publish_url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\"revision\": $('HTTP_1_AT_DIARIO').first().json.revision} }}",
+        "options": {}
+      },
+      "id": "ed43747c-476a-4c6a-af25-9f5136af2d24",
+      "name": "HTTP_FINAL_AT_DIARIO",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        640,
+        3248
+      ],
+      "typeVersion": 4.3,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "executeOnce": true,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Dashboard API Bearer token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 0.1
+      },
+      "id": "fabe1551-8aba-40d5-b55d-53eaf68858a1",
+      "name": "WAIT_BBDD_PRODUCTIVIDAD",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -608,
+        1504
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "8a7fe3fd-fe74-4fe7-81c7-501fe041932d",
+      "name": "WAIT_BBDD_CALIDAD",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -608,
+        1760
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 10
+      },
+      "id": "9fca2b02-1153-4006-9648-625e18097b24",
+      "name": "WAIT_BBDD_VOLUMETRIA",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -608,
+        2016
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 15
+      },
+      "id": "54986af6-3a95-41bb-baf9-d118e8f349d5",
+      "name": "WAIT_BBDD_AT",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -608,
+        2272
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 20
+      },
+      "id": "80927db0-a1b3-40dd-84c9-0b1ff96612a2",
+      "name": "WAIT_BBDD_PRODUCTIVIDAD_DIARIO",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -608,
+        2480
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 25
+      },
+      "id": "b2cfadde-be33-47fe-b607-5ddcb26b174f",
+      "name": "WAIT_BBDD_CALIDAD_DIARIO",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -608,
+        2736
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 30
+      },
+      "id": "78bc1499-f782-4157-b2cf-6627e80ae27f",
+      "name": "WAIT_BBDD_VOLUMETRIA_DIARIO",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -608,
+        2992
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 35
+      },
+      "id": "7592dabf-9f71-424f-935d-ba6370edc075",
+      "name": "WAIT_BBDD_AT_DIARIO",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -608,
+        3248
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Trigger diario 06:00": {
+      "main": [
+        [
+          {
+            "node": "WAIT_BBDD_PRODUCTIVIDAD",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "WAIT_BBDD_CALIDAD",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "WAIT_BBDD_VOLUMETRIA",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "WAIT_BBDD_AT",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "WAIT_BBDD_PRODUCTIVIDAD_DIARIO",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "WAIT_BBDD_CALIDAD_DIARIO",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "WAIT_BBDD_VOLUMETRIA_DIARIO",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "WAIT_BBDD_AT_DIARIO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BBDD_PRODUCTIVIDAD": {
+      "main": [
+        [
+          {
+            "node": "AGG_PRODUCTIVIDAD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BBDD_CALIDAD": {
+      "main": [
+        [
+          {
+            "node": "AGG_CALIDAD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BBDD_VOLUMETRIA": {
+      "main": [
+        [
+          {
+            "node": "AGG_VOLUMETRIA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BBDD_AT": {
+      "main": [
+        [
+          {
+            "node": "AGG_AT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AGG_PRODUCTIVIDAD": {
+      "main": [
+        [
+          {
+            "node": "HTTP_1_PROD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AGG_CALIDAD": {
+      "main": [
+        [
+          {
+            "node": "HTTP_1_CALIDAD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AGG_VOLUMETRIA": {
+      "main": [
+        [
+          {
+            "node": "HTTP_1_VOL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AGG_AT": {
+      "main": [
+        [
+          {
+            "node": "HTTP_1_AT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP_2_PROD": {
+      "main": [
+        [
+          {
+            "node": "HTTP_FINAL_PROD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP_1_PROD": {
+      "main": [
+        [
+          {
+            "node": "HTTP_2_PROD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP_1_CALIDAD": {
+      "main": [
+        [
+          {
+            "node": "HTTP_2_CALIDAD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP_2_CALIDAD": {
+      "main": [
+        [
+          {
+            "node": "HTTP_FINAL_CALIDAD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP_1_VOL": {
+      "main": [
+        [
+          {
+            "node": "HTTP_2_VOL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP_2_VOL": {
+      "main": [
+        [
+          {
+            "node": "HTTP_FINAL_VOL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP_1_AT": {
+      "main": [
+        [
+          {
+            "node": "HTTP_2_AT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP_2_AT": {
+      "main": [
+        [
+          {
+            "node": "HTTP_FINAL_AT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BBDD_PRODUCTIVIDAD_DIARIO": {
+      "main": [
+        [
+          {
+            "node": "AGG_PRODUCTIVIDAD_DIARIO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AGG_PRODUCTIVIDAD_DIARIO": {
+      "main": [
+        [
+          {
+            "node": "HTTP_1_PROD_DIARIO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BBDD_CALIDAD_DIARIO": {
+      "main": [
+        [
+          {
+            "node": "AGG_CALIDAD_DIARIO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP_1_PROD_DIARIO": {
+      "main": [
+        [
+          {
+            "node": "HTTP_2_PROD_DIARIO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP_2_PROD_DIARIO": {
+      "main": [
+        [
+          {
+            "node": "HTTP_FINAL_PROD_DIARIO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AGG_CALIDAD_DIARIO": {
+      "main": [
+        [
+          {
+            "node": "HTTP_1_CALIDAD_DIARIO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP_1_CALIDAD_DIARIO": {
+      "main": [
+        [
+          {
+            "node": "HTTP_2_CALIDAD_DIARIO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP_2_CALIDAD_DIARIO": {
+      "main": [
+        [
+          {
+            "node": "HTTP_FINAL_CALIDAD_DIARIO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BBDD_VOLUMETRIA_DIARIO": {
+      "main": [
+        [
+          {
+            "node": "AGG_VOLUMETRIA_DIARIO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AGG_VOLUMETRIA_DIARIO": {
+      "main": [
+        [
+          {
+            "node": "HTTP_1_VOL_DIARIO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP_1_VOL_DIARIO": {
+      "main": [
+        [
+          {
+            "node": "HTTP_2_VOL_DIARIO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP_2_VOL_DIARIO": {
+      "main": [
+        [
+          {
+            "node": "HTTP_FINAL_VOL_DIARIO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BBDD_AT_DIARIO": {
+      "main": [
+        [
+          {
+            "node": "AGG_AT_DIARIO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AGG_AT_DIARIO": {
+      "main": [
+        [
+          {
+            "node": "HTTP_1_AT_DIARIO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP_1_AT_DIARIO": {
+      "main": [
+        [
+          {
+            "node": "HTTP_2_AT_DIARIO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP_2_AT_DIARIO": {
+      "main": [
+        [
+          {
+            "node": "HTTP_FINAL_AT_DIARIO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WAIT_BBDD_PRODUCTIVIDAD": {
+      "main": [
+        [
+          {
+            "node": "BBDD_PRODUCTIVIDAD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WAIT_BBDD_CALIDAD": {
+      "main": [
+        [
+          {
+            "node": "BBDD_CALIDAD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WAIT_BBDD_VOLUMETRIA": {
+      "main": [
+        [
+          {
+            "node": "BBDD_VOLUMETRIA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WAIT_BBDD_AT": {
+      "main": [
+        [
+          {
+            "node": "BBDD_AT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WAIT_BBDD_PRODUCTIVIDAD_DIARIO": {
+      "main": [
+        [
+          {
+            "node": "BBDD_PRODUCTIVIDAD_DIARIO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WAIT_BBDD_CALIDAD_DIARIO": {
+      "main": [
+        [
+          {
+            "node": "BBDD_CALIDAD_DIARIO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WAIT_BBDD_VOLUMETRIA_DIARIO": {
+      "main": [
+        [
+          {
+            "node": "BBDD_VOLUMETRIA_DIARIO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WAIT_BBDD_AT_DIARIO": {
+      "main": [
+        [
+          {
+            "node": "BBDD_AT_DIARIO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [
+    {
+      "updatedAt": "2026-08-18T18:22:19.336Z",
+      "createdAt": "2026-08-18T18:22:19.336Z",
+      "id": "LxQEFQJprCAWW1Tc",
+      "name": "CHK_DCI"
+    }
+  ]
+}

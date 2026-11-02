@@ -1,0 +1,1347 @@
+<!doctype html><html class="light" lang="es"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Executive Dashboard — Operaciones CD</title>
+
+
+<link rel="stylesheet" href="assets/tailwind.css">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+    .bg-grid-light {
+      background-size: 24px 24px;
+      background-image: linear-gradient(to right, rgba(226, 232, 240, 0.6) 1px, transparent 1px),
+                        linear-gradient(to bottom, rgba(226, 232, 240, 0.6) 1px, transparent 1px);
+    }
+    .dark .bg-grid-dark {
+      background-size: 24px 24px;
+      background-image: linear-gradient(to right, rgba(51, 65, 85, 0.4) 1px, transparent 1px),
+                        linear-gradient(to bottom, rgba(51, 65, 85, 0.4) 1px, transparent 1px);
+    }
+
+    .density-transition { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+
+    .density-normal .density-main-card { padding: 1.5rem; }
+    .density-normal .density-header { margin-bottom: 1.25rem; padding-bottom: 0.85rem; }
+    .density-normal .density-title-area { margin-bottom: 1.5rem; }
+    .density-normal .density-title { font-size: 1.9rem; line-height: 2.4rem; }
+    .density-normal .density-subtitle { font-size: 0.75rem; display: block; }
+    .density-normal .density-toolbar { padding: 0.75rem; }
+    .density-normal .density-kpi-grid { margin-bottom: 1.5rem; gap: 1rem; }
+    .density-normal .density-kpi-card { padding: 1.15rem; }
+    .density-normal .density-kpi-val { font-size: 2.4rem; line-height: 2.65rem; }
+    .density-normal .density-section-row { padding-top: 1.25rem; padding-bottom: 0.35rem; }
+    .density-normal .density-table { border-spacing: 0.35rem 0.45rem; }
+    #main-table { table-layout: fixed; }
+    #main-table th, #main-table td { overflow: hidden; text-overflow: ellipsis; }
+    .density-normal .density-cell { padding-top: 0.65rem; padding-bottom: 0.65rem; font-size: 0.875rem; }
+
+    .density-compact .density-main-card { padding: 1rem; }
+    .density-compact .density-header { margin-bottom: 0.5rem; padding-bottom: 0.4rem; }
+    .density-compact .density-title-area { margin-bottom: 0.65rem; }
+    .density-compact .density-title { font-size: 1.25rem; line-height: 1.5rem; }
+    .density-compact .density-subtitle { display: none; }
+    .density-compact .density-toolbar { padding: 0.4rem 0.6rem; }
+    .density-compact .density-kpi-grid { margin-bottom: 0.65rem; gap: 0.5rem; }
+    .density-compact .density-kpi-card { padding: 0.5rem 0.85rem; }
+    .density-compact .density-kpi-val { font-size: 1.5rem; line-height: 1.75rem; }
+    .density-compact .density-kpi-focos { margin-top: 0.35rem; padding-top: 0.35rem; }
+    .density-compact .density-section-row { padding-top: 0.4rem; padding-bottom: 0.1rem; }
+    .density-compact .density-table { border-spacing: 0.25rem 0.2rem; }
+    .density-compact .density-cell { padding-top: 0.2rem; padding-bottom: 0.2rem; font-size: 0.735rem; }
+
+    .kpi-ok   { background-color: #e6f4ea; color: #137333; border: 1px solid #ceead6; }
+    .kpi-warn { background-color: #fef7e0; color: #b06000; border: 1px solid #feefc3; }
+    .kpi-off  { background-color: #fce8e6; color: #c5221f; border: 1px solid #fad2cf; }
+    .kpi-target { background-color: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+
+    .dark .kpi-ok   { background-color: rgba(20, 83, 45, 0.3); color: #86efac; border-color: rgba(34, 197, 94, 0.25); }
+    .dark .kpi-warn { background-color: rgba(120, 53, 15, 0.3); color: #fde047; border-color: rgba(234, 179, 8, 0.25); }
+    .dark .kpi-off  { background-color: rgba(136, 19, 55, 0.3); color: #fda4af; border-color: rgba(244, 63, 94, 0.25); }
+    .dark .kpi-target { background-color: rgba(30, 41, 59, 0.7); color: #cbd5e1; border-color: rgba(51, 65, 85, 0.7); }
+
+    .wf-bar { width: 1.25rem; border-top-left-radius: 0.25rem; border-top-right-radius: 0.25rem; }
+    @media (min-width: 1024px) { .wf-bar { width: 1.75rem; } }
+    .wf-label { font-size: 0.55rem; line-height: 1.1; height: 1.5rem; display: flex; align-items: flex-start; justify-content: center; text-align: center; overflow: visible; white-space: normal;}
+    @media (min-width: 640px) { .wf-label { font-size: 0.65rem; } }
+  </style>
+</head>
+<body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen p-3 md:p-6 transition-colors duration-200 bg-grid-light dark:bg-grid-dark font-sans">
+<div class="density-normal max-w-[1700px] mx-auto bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-3xl density-main-card shadow-xl border border-slate-200/80 dark:border-slate-800/80 density-transition" id="main-card">
+<header class="flex flex-wrap items-center justify-between gap-3 density-header border-b border-slate-100 dark:border-slate-800 density-transition">
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 bg-accent-800 dark:bg-accent-700 text-white rounded-xl flex items-center justify-center font-black text-lg shadow-md">D</div>
+<div>
+<span class="text-[10px] font-bold text-slate-400 dark:text-slate-500 tracking-wider uppercase block leading-none">Reporte Gerencial</span>
+<span class="text-xs font-bold text-slate-700 dark:text-slate-200">CD Santiago de Chile</span>
+</div>
+</div>
+<nav class="flex bg-slate-100 dark:bg-slate-800/80 p-1 rounded-full gap-1 text-xs font-semibold text-slate-600 dark:text-slate-300 border border-slate-200/50 dark:border-slate-700/50">
+<button class="px-4 py-1.5 rounded-full bg-accent-800 dark:bg-accent-700 text-white shadow-sm font-bold transition-all" id="nav-daily" onclick="switchTab('daily')">Daily</button>
+<button class="px-3.5 py-1.5 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-all" id="nav-putaway" onclick="switchTab('putaway')">Guardado</button>
+<button class="px-3.5 py-1.5 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-all" id="nav-checkin" onclick="switchTab('checkin')">Chequeado</button>
+<button class="px-3.5 py-1.5 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-all" id="nav-dci" onclick="switchTab('dci')">Recepción Rápida</button>
+<button class="px-3.5 py-1.5 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-all" id="nav-calidad" onclick="switchTab('calidad')">Calidad</button>
+</nav>
+<div class="flex items-center gap-2">
+<button class="w-9 h-9 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl flex items-center justify-center text-base transition-all border border-slate-200 dark:border-slate-700" id="theme-btn" onclick="toggleDarkMode()" title="Cambiar Tema">🌙</button>
+</div>
+</header>
+<!-- TAB 1: DAILY -->
+<div class="tab-content block" id="tab-daily">
+<div class="flex flex-wrap justify-between items-center gap-4 density-title-area density-transition">
+<div>
+<h1 class="font-black text-slate-900 dark:text-white tracking-tight density-title density-transition">Daily de una página</h1>
+<p class="font-semibold text-slate-400 dark:text-slate-500 mt-0.5 density-subtitle density-transition">16 indicadores clave · Rendimiento operativo multicriterio</p>
+</div>
+<div class="flex flex-wrap items-center gap-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-sm density-toolbar density-transition">
+<div class="flex items-center gap-2">
+<span class="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 dark:text-slate-500">Semanas:</span>
+<div class="flex gap-1" id="weeks-btn-group">
+<button class="w-6 h-6 rounded-lg text-xs font-bold bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 transition-all" onclick="setHistoricalWeeks(1)">1</button>
+<button class="w-6 h-6 rounded-lg text-xs font-bold bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 transition-all" onclick="setHistoricalWeeks(2)">2</button>
+<button class="w-6 h-6 rounded-lg text-xs font-bold bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 transition-all" onclick="setHistoricalWeeks(3)">3</button>
+<button class="w-6 h-6 rounded-lg text-xs font-bold bg-accent-800 text-white shadow-sm transition-all" id="week-btn-4" onclick="setHistoricalWeeks(4)">4</button>
+</div>
+</div>
+<div class="border-l border-slate-200 dark:border-slate-700 pl-3 flex items-center gap-2">
+<span class="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 dark:text-slate-500">Semana:</span>
+<select id="week-filter-select" onchange="onWeekFilterChange()" class="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-1 text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer"></select>
+</div>
+<div class="border-l border-slate-200 dark:border-slate-700 pl-3 flex items-center gap-2">
+<span class="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 dark:text-slate-500">Densidad:</span>
+<div class="flex bg-slate-200/70 dark:bg-slate-700/60 p-0.5 rounded-lg text-xs font-bold">
+<button class="px-2.5 py-0.5 bg-accent-800 text-white rounded-md shadow-sm transition-all" id="btn-density-normal" onclick="setDensity('normal')">Normal</button>
+<button class="px-2.5 py-0.5 text-slate-600 dark:text-slate-300 rounded-md transition-all" id="btn-density-compact" onclick="setDensity('compact')">Compacta</button>
+</div>
+</div>
+<div class="border-l border-slate-200 dark:border-slate-700 pl-3 flex items-center gap-1.5 font-bold text-[10px]">
+<span class="px-2 py-0.5 rounded-md kpi-ok">OK</span>
+<span class="px-2 py-0.5 rounded-md kpi-warn">±5%</span>
+<span class="px-2 py-0.5 rounded-md kpi-off">Off</span>
+</div>
+</div>
+</div><div class="hidden text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 mb-3 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/40" id="live-data-banner"></div>
+<div class="grid grid-cols-1 md:grid-cols-12 density-kpi-grid density-transition">
+<div class="md:col-span-4 bg-slate-50/80 dark:bg-slate-800/40 density-kpi-card rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-sm flex flex-col justify-between density-transition">
+<div>
+<span class="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block leading-tight">Semana Actual</span>
+<h2 class="font-black text-slate-800 dark:text-slate-100 density-kpi-val density-transition" id="kpi-semana-actual-value">W30</h2>
+</div>
+<div class="density-kpi-focos border-t border-slate-200/60 dark:border-slate-700/60 density-transition">
+<span class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Focos Primarios</span>
+<div class="flex gap-1 flex-wrap text-[11px] font-bold">
+<span class="px-2.5 py-0.5 bg-slate-200/70 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-full">INP</span>
+<span class="px-2.5 py-0.5 bg-slate-200/70 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-full">SLA</span>
+<span class="px-2.5 py-0.5 bg-slate-200/70 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-full">TPH</span>
+<span class="px-2.5 py-0.5 bg-indigo-50 dark:bg-indigo-950/60 text-brand-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/50 rounded-full">Guardado</span>
+<span class="px-2.5 py-0.5 bg-slate-200/70 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-full">Recepción Rápida</span>
+</div>
+</div>
+</div>
+<div class="md:col-span-4 bg-slate-50/80 dark:bg-slate-800/40 density-kpi-card rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-sm flex flex-col justify-between density-transition">
+<div>
+<span class="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block leading-tight">INP Ayer</span>
+<div class="flex items-baseline gap-1">
+<span class="font-black text-emerald-700 dark:text-emerald-400 density-kpi-val density-transition" id="kpi-inp-ayer-value">74,2</span>
+<span class="text-sm font-bold text-emerald-700 dark:text-emerald-400"><br></span>
+</div>
+</div>
+<div class="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 px-2.5 py-1 rounded-lg w-fit border text-rose-800" id="kpi-inp-ayer-badge">-12.7 vs target <span class="text-slate-400 font-medium" id="kpi-inp-ayer-day">· MAR</span></div>
+</div>
+<div class="md:col-span-4 bg-slate-50/80 dark:bg-slate-800/40 density-kpi-card rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-sm flex flex-col justify-between density-transition">
+<div>
+<span class="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block leading-tight">SLA Ayer</span>
+<div class="flex items-baseline gap-1">
+<span class="font-black text-emerald-700 dark:text-emerald-400 density-kpi-val density-transition" id="kpi-sla-ayer-value">100,0</span>
+<span class="text-sm font-bold text-emerald-700 dark:text-emerald-400">%</span>
+</div>
+</div>
+<div class="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-lg w-fit border border-emerald-200 dark:border-emerald-800/40" id="kpi-sla-ayer-badge">
+            +0.0% vs target <span class="text-slate-400 font-medium" id="kpi-sla-ayer-day">· JUE</span>
+</div>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full border-separate density-table text-center density-transition" id="main-table">
+<thead>
+<tr>
+<th class="w-52 text-left p-1.5 text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Indicador</th>
+<th class="p-0 transition-all" colspan="4" id="hist-header-group">
+<div class="bg-accent-700 dark:bg-slate-800 text-white text-[11px] font-extrabold uppercase tracking-wider py-1.5 rounded-xl shadow-xs">Semanas Anteriores</div>
+</th>
+<th class="p-0 pl-1.5" colspan="8">
+<div class="bg-accent-800 dark:bg-slate-700 text-white text-[11px] font-extrabold uppercase tracking-wider py-1.5 rounded-xl shadow-xs flex items-center justify-center gap-2">
+<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>Semana Actual - <span class="current-week-label">W30</span></div>
+</th>
+</tr>
+<tr class="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+<th></th>
+<th class="p-1 hist-week-label" data-hist-col="26">W26</th>
+<th class="p-1 hist-week-label" data-hist-col="27">W27</th>
+<th class="p-1 hist-week-label" data-hist-col="28">W28</th>
+<th class="p-1 hist-week-label" data-hist-col="29">W29</th>
+<th class="p-1 text-slate-600 dark:text-slate-300">Target W-1</th>
+<th class="p-1">Domingo</th>
+<th class="p-1">Lunes</th>
+<th class="p-1">Martes</th>
+<th class="p-1">Miércoles</th>
+<th class="p-1">Jueves</th>
+<th class="p-1">Viernes</th>
+<th class="p-1">Sábado</th>
+</tr>
+</thead>
+<tbody class="font-bold">
+<!-- BLOQUE 1: PRIMARIOS -->
+<tr>
+<td class="text-left density-section-row density-transition" colspan="12">
+<span class="bg-slate-800 dark:bg-slate-700 text-white px-3 py-1 rounded-full text-xs font-extrabold shadow-xs inline-flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-white"></span> PRIMARIOS <span class="font-normal text-[10px] opacity-80">4 indicadores</span>
+</span>
+</td>
+</tr>
+<tr id="row-inp">
+<td class="text-left p-1 font-bold text-slate-800 dark:text-slate-100">INP <span class="text-[9px] text-slate-400 font-medium block">↑ mayor mejor %</span></td>
+<td class="density-cell rounded-xl kpi-warn" data-hist-col="26">89,8</td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="27">92,8</td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="28">95,9</td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="29">93,7</td>
+<td class="density-cell rounded-xl kpi-target" data-role="target">92,0</td>
+<td class="density-cell rounded-xl" data-day="sun">—</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="mon">94,2</td>
+<td class="density-cell rounded-xl kpi-warn" data-day="tue">91,5</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="wed">92,8</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="thu">95,1</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="fri">96,4</td>
+<td class="density-cell rounded-xl" data-day="sat">—</td>
+</tr>
+<tr id="row-sla">
+<td class="text-left p-1 font-bold text-slate-800 dark:text-slate-100">SLA <span class="text-[9px] text-slate-400 font-medium block">↑ mayor mejor %</span></td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="26">99,4</td>
+<td class="density-cell rounded-xl kpi-warn" data-hist-col="27">97,1</td>
+<td class="density-cell rounded-xl kpi-warn" data-hist-col="28">97,6</td>
+<td class="density-cell rounded-xl kpi-warn" data-hist-col="29">98,1</td>
+<td class="density-cell rounded-xl kpi-target" data-role="target">100,0</td>
+<td class="density-cell rounded-xl" data-day="sun">—</td>
+<td class="density-cell rounded-xl kpi-warn" data-day="mon">98,0</td>
+<td class="density-cell rounded-xl kpi-warn" data-day="tue">96,0</td>
+<td class="density-cell rounded-xl kpi-warn" data-day="wed">99,0</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="thu">100,0</td>
+<td class="density-cell rounded-xl kpi-warn" data-day="fri">99,0</td>
+<td class="density-cell rounded-xl" data-day="sat">—</td>
+</tr>
+<tr id="row-dpmo-sla">
+<td class="text-left p-1 font-bold text-slate-800 dark:text-slate-100">DPMO SLA <span class="text-[9px] text-slate-400 font-medium block">↓ menor mejor ppm</span></td>
+<td class="density-cell rounded-xl" data-hist-col="26">—</td>
+<td class="density-cell rounded-xl" data-hist-col="27">—</td>
+<td class="density-cell rounded-xl" data-hist-col="28">—</td>
+<td class="density-cell rounded-xl" data-hist-col="29">—</td>
+<td class="density-cell rounded-xl kpi-target" data-role="target">—</td>
+<td class="density-cell rounded-xl" data-day="sun">—</td>
+<td class="density-cell rounded-xl" data-day="mon">—</td>
+<td class="density-cell rounded-xl" data-day="tue">—</td>
+<td class="density-cell rounded-xl" data-day="wed">—</td>
+<td class="density-cell rounded-xl" data-day="thu">—</td>
+<td class="density-cell rounded-xl" data-day="fri">—</td>
+<td class="density-cell rounded-xl" data-day="sat">—</td>
+</tr>
+<tr id="row-tph-ch-dci">
+<td class="text-left p-1 font-bold text-slate-800 dark:text-slate-100">TPH Chequeado + Rec. Rápida <span class="text-[9px] text-slate-400 font-medium block">↑ mayor mejor uds</span></td>
+<td class="density-cell rounded-xl kpi-off" data-hist-col="26">110</td>
+<td class="density-cell rounded-xl kpi-warn" data-hist-col="27">114</td>
+<td class="density-cell rounded-xl kpi-warn" data-hist-col="28">118</td>
+<td class="density-cell rounded-xl kpi-warn" data-hist-col="29">122</td>
+<td class="density-cell rounded-xl kpi-target" data-role="target">120</td>
+<td class="density-cell rounded-xl" data-day="sun">—</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="mon">128</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="tue">122</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="wed">124</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="thu">130</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="fri">132</td>
+<td class="density-cell rounded-xl" data-day="sat">—</td>
+</tr>
+<tr id="row-tph-putaway">
+<td class="text-left p-1 font-bold text-slate-800 dark:text-slate-100">TPH Guardado <span class="text-[9px] text-slate-400 font-medium block">↑ mayor mejor uds</span></td>
+<td class="density-cell rounded-xl kpi-warn" data-hist-col="26">136</td>
+<td class="density-cell rounded-xl kpi-warn" data-hist-col="27">137</td>
+<td class="density-cell rounded-xl kpi-warn" data-hist-col="28">134</td>
+<td class="density-cell rounded-xl kpi-warn" data-hist-col="29">130</td>
+<td class="density-cell rounded-xl kpi-target" data-role="target">135</td>
+<td class="density-cell rounded-xl" data-day="sun">—</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="mon">142</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="tue">138</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="wed">133</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="thu">140</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="fri">145</td>
+<td class="density-cell rounded-xl" data-day="sat">—</td>
+</tr>
+<!-- BLOQUE 2: NETAS POR OPERACIÓN -->
+<tr>
+<td class="text-left density-section-row density-transition" colspan="12">
+<span class="bg-slate-800 dark:bg-slate-700 text-white px-3 py-1 rounded-full text-xs font-extrabold shadow-xs inline-flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-white"></span> NETAS POR OPERACIÓN <span class="font-normal text-[10px] opacity-80">4 indicadores</span>
+</span>
+</td>
+</tr>
+<tr id="row-neta-receiving">
+<td class="text-left p-1 font-bold text-slate-800 dark:text-slate-100">Neta Receiving <span class="text-[9px] text-slate-400 font-medium block">↑ mayor mejor u/h</span></td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="26">111</td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="27">111</td>
+<td class="density-cell rounded-xl kpi-warn" data-hist-col="28">109</td>
+<td class="density-cell rounded-xl kpi-warn" data-hist-col="29">106</td>
+<td class="density-cell rounded-xl kpi-target" data-role="target">110</td>
+<td class="density-cell rounded-xl" data-day="sun">—</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="mon">112</td>
+<td class="density-cell rounded-xl kpi-warn" data-day="tue">108</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="wed">110</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="thu">114</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="fri">116</td>
+<td class="density-cell rounded-xl" data-day="sat">—</td>
+</tr>
+<tr id="row-neta-checkin">
+<td class="text-left p-1 font-bold text-slate-800 dark:text-slate-100">Neta Chequeado <span class="text-[9px] text-slate-400 font-medium block">↑ mayor mejor u/h</span></td>
+<td class="density-cell rounded-xl kpi-warn" data-hist-col="26">114</td>
+<td class="density-cell rounded-xl kpi-warn" data-hist-col="27">118</td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="28">122</td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="29">126</td>
+<td class="density-cell rounded-xl kpi-target" data-role="target">120</td>
+<td class="density-cell rounded-xl" data-day="sun">—</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="mon">124</td>
+<td class="density-cell rounded-xl kpi-warn" data-day="tue">118</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="wed">121</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="thu">125</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="fri">127</td>
+<td class="density-cell rounded-xl" data-day="sat">—</td>
+</tr>
+<tr id="row-neta-dci">
+<td class="text-left p-1 font-bold text-slate-800 dark:text-slate-100">Neta Rec. Rápida <span class="text-[9px] text-slate-400 font-medium block">↑ mayor mejor u/h</span></td>
+<td class="density-cell rounded-xl kpi-warn" data-hist-col="26">124</td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="27">128</td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="28">129</td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="29">126</td>
+<td class="density-cell rounded-xl kpi-target" data-role="target">125</td>
+<td class="density-cell rounded-xl" data-day="sun">—</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="mon">132</td>
+<td class="density-cell rounded-xl kpi-warn" data-day="tue">122</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="wed">128</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="thu">133</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="fri">136</td>
+<td class="density-cell rounded-xl" data-day="sat">—</td>
+</tr>
+<tr id="row-neta-putaway">
+<td class="text-left p-1 font-bold text-slate-800 dark:text-slate-100">Neta Guardado <span class="text-[9px] text-slate-400 font-medium block">↑ mayor mejor u/h</span></td>
+<td class="density-cell rounded-xl kpi-warn" data-hist-col="26">129</td>
+<td class="density-cell rounded-xl kpi-warn" data-hist-col="27">134</td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="28">138</td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="29">143</td>
+<td class="density-cell rounded-xl kpi-target" data-role="target">135</td>
+<td class="density-cell rounded-xl" data-day="sun">—</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="mon">142</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="tue">138</td>
+<td class="density-cell rounded-xl kpi-warn" data-day="wed">133</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="thu">140</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="fri">145</td>
+<td class="density-cell rounded-xl" data-day="sat">—</td>
+</tr>
+<!-- BLOQUE 3: OPERATIVOS COMPLEMENTARIOS -->
+<tr>
+<td class="text-left density-section-row density-transition" colspan="12">
+<span class="bg-slate-800 dark:bg-slate-700 text-white px-3 py-1 rounded-full text-xs font-extrabold shadow-xs inline-flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-white"></span> OPERATIVOS COMPLEMENTARIOS <span class="font-normal text-[10px] opacity-80">3 indicadores</span>
+</span>
+</td>
+</tr>
+<tr id="row-share-dci">
+<td class="text-left p-1 font-bold text-slate-800 dark:text-slate-100">Share Rec. Rápida <span class="text-[9px] text-slate-400 font-medium block">↑ mayor mejor %</span></td>
+<td class="density-cell rounded-xl kpi-warn" data-hist-col="26">82,2</td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="27">85,0</td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="28">87,9</td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="29">88,3</td>
+<td class="density-cell rounded-xl kpi-target" data-role="target">30%</td>
+<td class="density-cell rounded-xl" data-day="sun">—</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="mon">88,0</td>
+<td class="density-cell rounded-xl kpi-warn" data-day="tue">83,0</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="wed">87,0</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="thu">89,0</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="fri">91,0</td>
+<td class="density-cell rounded-xl" data-day="sat">—</td>
+</tr>
+<tr id="row-at">
+<td class="text-left p-1 font-bold text-slate-800 dark:text-slate-100">AT (Attendance) <span class="text-[9px] text-slate-400 font-medium block">↑ mayor mejor %</span></td>
+<td class="density-cell rounded-xl kpi-warn" data-hist-col="26">92,1</td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="27">95,3</td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="28">98,5</td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="29">99,0</td>
+<td class="density-cell rounded-xl kpi-target" data-role="target">93%</td>
+<td class="density-cell rounded-xl" data-day="sun">—</td>
+<td class="density-cell rounded-xl kpi-warn" data-day="mon">92,0</td>
+<td class="density-cell rounded-xl kpi-off" data-day="tue">89,0</td>
+<td class="density-cell rounded-xl kpi-warn" data-day="wed">93,0</td>
+<td class="density-cell rounded-xl kpi-warn" data-day="thu">94,0</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="fri">95,0</td>
+<td class="density-cell rounded-xl" data-day="sat">—</td>
+</tr>
+<tr id="row-teo">
+<td class="text-left p-1 font-bold text-slate-800 dark:text-slate-100">TEO Inbound Audit <span class="text-[9px] text-slate-400 font-medium block">↑ mayor mejor %</span></td>
+<td class="density-cell rounded-xl kpi-warn" data-hist-col="26">91,2</td>
+<td class="density-cell rounded-xl kpi-warn" data-hist-col="27">94,4</td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="28">97,5</td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="29">100,7</td>
+<td class="density-cell rounded-xl kpi-target" data-role="target">1,2%</td>
+<td class="density-cell rounded-xl" data-day="sun">—</td>
+<td class="density-cell rounded-xl kpi-warn" data-day="mon">91,0</td>
+<td class="density-cell rounded-xl kpi-off" data-day="tue">88,0</td>
+<td class="density-cell rounded-xl kpi-warn" data-day="wed">92,0</td>
+<td class="density-cell rounded-xl kpi-warn" data-day="thu">94,0</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="fri">95,0</td>
+<td class="density-cell rounded-xl" data-day="sat">—</td>
+</tr>
+<!-- BLOQUE 4: CALIDAD -->
+<tr>
+<td class="text-left density-section-row density-transition" colspan="12">
+<span class="bg-slate-800 dark:bg-slate-700 text-white px-3 py-1 rounded-full text-xs font-extrabold shadow-xs inline-flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-white"></span> CALIDAD <span class="font-normal text-[10px] opacity-80">5 indicadores</span>
+</span>
+</td>
+</tr>
+<tr id="row-contact-rate">
+<td class="text-left p-1 font-bold text-slate-800 dark:text-slate-100">Contact Rate <span class="text-[9px] text-slate-400 font-medium block">↓ menor mejor %</span></td>
+<td class="density-cell rounded-xl kpi-off" data-hist-col="26">2,7</td>
+<td class="density-cell rounded-xl kpi-warn" data-hist-col="27">2,6</td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="28">2,5</td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="29">2,4</td>
+<td class="density-cell rounded-xl kpi-target" data-role="target">4,49%</td>
+<td class="density-cell rounded-xl" data-day="sun">—</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="mon">2,1</td>
+<td class="density-cell rounded-xl kpi-warn" data-day="tue">2,6</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="wed">2,4</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="thu">2,2</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="fri">2,0</td>
+<td class="density-cell rounded-xl" data-day="sat">—</td>
+</tr>
+<tr id="row-reaperturas">
+<td class="text-left p-1 font-bold text-slate-800 dark:text-slate-100">% Reaperturas <span class="text-[9px] text-slate-400 font-medium block">↓ menor mejor %</span></td>
+<td class="density-cell rounded-xl kpi-off" data-hist-col="26">1,1</td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="27">1,0</td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="28">1,0</td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="29">0,9</td>
+<td class="density-cell rounded-xl kpi-target" data-role="target">4%</td>
+<td class="density-cell rounded-xl" data-day="sun">—</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="mon">0,8</td>
+<td class="density-cell rounded-xl kpi-off" data-day="tue">1,1</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="wed">1,0</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="thu">0,9</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="fri">0,7</td>
+<td class="density-cell rounded-xl" data-day="sat">—</td>
+</tr>
+<tr id="row-inbound-audit">
+<td class="text-left p-1 font-bold text-slate-800 dark:text-slate-100">Inbound Audit <span class="text-[9px] text-slate-400 font-medium block">↑ mayor mejor %</span></td>
+<td class="density-cell rounded-xl kpi-warn" data-hist-col="26">96,0</td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="27">99,3</td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="28">102,5</td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="29">100,3</td>
+<td class="density-cell rounded-xl kpi-target" data-role="target">10000</td>
+<td class="density-cell rounded-xl" data-day="sun">—</td>
+<td class="density-cell rounded-xl kpi-warn" data-day="mon">97,9</td>
+<td class="density-cell rounded-xl kpi-warn" data-day="tue">97,2</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="wed">98,1</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="thu">98,4</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="fri">98,5</td>
+<td class="density-cell rounded-xl" data-day="sat">—</td>
+</tr>
+<tr id="row-dpmo-cruce">
+<td class="text-left p-1 font-bold text-slate-800 dark:text-slate-100">DPMO Cruce <span class="text-[9px] text-slate-400 font-medium block">↓ menor mejor —</span></td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="26">247</td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="27">248</td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="28">249</td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="29">250</td>
+<td class="density-cell rounded-xl kpi-target" data-role="target">467</td>
+<td class="density-cell rounded-xl" data-day="sun">—</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="mon">180</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="tue">210</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="wed">200</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="thu">175</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="fri">170</td>
+<td class="density-cell rounded-xl" data-day="sat">—</td>
+</tr>
+<tr id="row-dpmo-faltante">
+<td class="text-left p-1 font-bold text-slate-800 dark:text-slate-100">DPMO Faltante <span class="text-[9px] text-slate-400 font-medium block">↓ menor mejor —</span></td>
+<td class="density-cell rounded-xl kpi-warn" data-hist-col="26">311</td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="27">295</td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="28">288</td>
+<td class="density-cell rounded-xl kpi-ok" data-hist-col="29">289</td>
+<td class="density-cell rounded-xl kpi-target" data-role="target">624</td>
+<td class="density-cell rounded-xl" data-day="sun">—</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="mon">210</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="tue">260</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="wed">240</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="thu">200</td>
+<td class="density-cell rounded-xl kpi-ok" data-day="fri">190</td>
+<td class="density-cell rounded-xl" data-day="sat">—</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- TAB 2: PUTAWAY -->
+<div class="tab-content hidden space-y-6" id="tab-putaway">
+<div class="flex flex-wrap justify-between items-start gap-4">
+<div>
+<span class="text-[10px] font-black text-indigo-600 dark:text-indigo-400 tracking-wider uppercase">OPERACIÓN · GUARDADO</span>
+<h1 class="text-2xl md:text-3xl font-black text-slate-900 dark:text-white">Guardado · Performance &amp; Volumetría</h1>
+</div>
+<div class="bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-4 shadow-sm text-right min-w-[200px]">
+<span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">PRODUCTIVIDAD NETA</span>
+<div class="flex items-baseline justify-end gap-1">
+<span class="text-3xl font-black text-indigo-600 dark:text-indigo-400">142</span>
+<span class="text-xs font-bold text-slate-500">u/h</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<div class="lg:col-span-12 bg-slate-50/60 dark:bg-slate-800/30 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 overflow-x-auto">
+<span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-4">CASCADA DE PALANCAS (PALANCAS DE RENDIMIENTO U/H)</span>
+<div class="h-44 min-w-[800px] flex items-end justify-between px-2 pt-6 pb-2 border-b border-slate-200 dark:border-slate-700/60">
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-slate-400">135</span><div class="wf-bar bg-slate-400/80 h-24"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">Base</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-emerald-600">+2</span><div class="wf-bar bg-emerald-500 h-6"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">NH1</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-emerald-600">+1</span><div class="wf-bar bg-emerald-500 h-4"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">NH2</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-rose-500">-1</span><div class="wf-bar bg-rose-500 h-4"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">NH3</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-rose-500">-2</span><div class="wf-bar bg-rose-500 h-6"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">NH4</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-emerald-600">+3</span><div class="wf-bar bg-emerald-500 h-8"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">NATIVO</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-emerald-600">+2</span><div class="wf-bar bg-emerald-500 h-6"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">PT</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-emerald-600">+4</span><div class="wf-bar bg-emerald-500 h-10"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">Binfullness</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-rose-500">-2</span><div class="wf-bar bg-rose-500 h-6"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">TIB (time<br>in bin)</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-rose-500">-2</span><div class="wf-bar bg-rose-500 h-6"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">TBB (time<br>btwn bin)</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-emerald-600">+3</span><div class="wf-bar bg-emerald-500 h-8"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">Vol.<br>Toteable</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-rose-500">-1</span><div class="wf-bar bg-rose-500 h-4"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">Vol. No<br>Toteable</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-emerald-600">+2</span><div class="wf-bar bg-emerald-500 h-6"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">Guardado<br>Multi Unit</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-indigo-600 dark:text-indigo-400">144</span><div class="wf-bar bg-indigo-600 dark:bg-indigo-500 h-28"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">Actual</span></div>
+</div>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full border-separate border-spacing-y-2 text-center text-xs font-bold">
+<thead>
+<tr class="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+<th class="text-left p-2">MÉTRICA GUARDADO</th>
+<th class="p-2">TARGET</th>
+<th class="p-2">REP NH1</th>
+<th class="p-2">REP NH2</th>
+<th class="p-2">REP NH3</th>
+<th class="p-2">REP NH4</th>
+<th class="p-2">VOLUMETRÍA (M³)</th>
+<th class="p-2">BINFULNESS %</th>
+<th class="p-2">TIB (S)</th>
+<th class="p-2">TBB (S)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="text-left p-2.5 font-bold text-slate-800 dark:text-slate-100">Turno Mañana (06–14)</td>
+<td class="p-2.5 rounded-xl kpi-target">135 u/h</td>
+<td class="p-2.5 rounded-xl kpi-ok">152 u/h</td>
+<td class="p-2.5 rounded-xl kpi-ok">144 u/h</td>
+<td class="p-2.5 rounded-xl kpi-warn">132 u/h</td>
+<td class="p-2.5 rounded-xl kpi-warn">128 u/h</td>
+<td class="p-2.5 rounded-xl kpi-target">450 m³</td>
+<td class="p-2.5 rounded-xl kpi-ok">89,2%</td>
+<td class="p-2.5 rounded-xl kpi-ok">14s</td>
+<td class="p-2.5 rounded-xl kpi-ok">22s</td>
+</tr>
+<tr>
+<td class="text-left p-2.5 font-bold text-slate-800 dark:text-slate-100">Turno Tarde (14–22)</td>
+<td class="p-2.5 rounded-xl kpi-target">135 u/h</td>
+<td class="p-2.5 rounded-xl kpi-ok">140 u/h</td>
+<td class="p-2.5 rounded-xl kpi-warn">134 u/h</td>
+<td class="p-2.5 rounded-xl kpi-off">120 u/h</td>
+<td class="p-2.5 rounded-xl kpi-off">115 u/h</td>
+<td class="p-2.5 rounded-xl kpi-target">380 m³</td>
+<td class="p-2.5 rounded-xl kpi-warn">84,5%</td>
+<td class="p-2.5 rounded-xl kpi-warn">18s</td>
+<td class="p-2.5 rounded-xl kpi-off">31s</td>
+</tr>
+<tr>
+<td class="text-left p-2.5 font-bold text-slate-800 dark:text-slate-100">Turno Noche (22–06)</td>
+<td class="p-2.5 rounded-xl kpi-target">135 u/h</td>
+<td class="p-2.5 rounded-xl kpi-warn">131 u/h</td>
+<td class="p-2.5 rounded-xl kpi-warn">129 u/h</td>
+<td class="p-2.5 rounded-xl kpi-off">118 u/h</td>
+<td class="p-2.5 rounded-xl kpi-off">110 u/h</td>
+<td class="p-2.5 rounded-xl kpi-target">210 m³</td>
+<td class="p-2.5 rounded-xl kpi-ok">87,1%</td>
+<td class="p-2.5 rounded-xl kpi-ok">15s</td>
+<td class="p-2.5 rounded-xl kpi-warn">26s</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- TAB 3: CHECK-IN -->
+<div class="tab-content hidden space-y-6" id="tab-checkin">
+<div class="flex flex-wrap justify-between items-start gap-4">
+<div>
+<span class="text-[10px] font-black text-indigo-600 dark:text-indigo-400 tracking-wider uppercase">OPERACIÓN · CHEQUEADO</span>
+<h1 class="text-2xl md:text-3xl font-black text-slate-900 dark:text-white">Chequeado · Performance</h1>
+</div>
+</div>
+<div class="grid grid-cols-1 gap-6">
+<div class="bg-slate-50/60 dark:bg-slate-800/30 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 overflow-x-auto">
+<span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-4">CASCADA DE PALANCAS (16 VARIABLES)</span>
+<div class="h-44 min-w-[900px] flex items-end justify-between px-2 pt-6 pb-2 border-b border-slate-200 dark:border-slate-700/60">
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-slate-400">120</span><div class="wf-bar bg-slate-400/80 h-24"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">Base</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-emerald-600">+1</span><div class="wf-bar bg-emerald-500 h-4"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">NH1</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-emerald-600">+1</span><div class="wf-bar bg-emerald-500 h-4"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">NH2</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-rose-500">-1</span><div class="wf-bar bg-rose-500 h-4"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">NH3</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-rose-500">-1</span><div class="wf-bar bg-rose-500 h-4"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">NH4</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-emerald-600">+2</span><div class="wf-bar bg-emerald-500 h-6"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">NATIVO</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-emerald-600">+1</span><div class="wf-bar bg-emerald-500 h-4"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">PT</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-emerald-600">+2</span><div class="wf-bar bg-emerald-500 h-6"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">Vol.<br>Toteable</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-rose-500">-1</span><div class="wf-bar bg-rose-500 h-4"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">Vol. No<br>Toteable</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-emerald-600">+1</span><div class="wf-bar bg-emerald-500 h-4"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">Tote XS</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-emerald-600">+1</span><div class="wf-bar bg-emerald-500 h-4"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">Tote S</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-emerald-600">+2</span><div class="wf-bar bg-emerald-500 h-6"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">Tote M</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-rose-500">-1</span><div class="wf-bar bg-rose-500 h-4"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">Tote L</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-rose-500">-2</span><div class="wf-bar bg-rose-500 h-6"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">Tote XL</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-rose-500">-2</span><div class="wf-bar bg-rose-500 h-6"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">Satura-<br>fullness</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-indigo-600 dark:text-indigo-400">123</span><div class="wf-bar bg-indigo-600 dark:bg-indigo-500 h-26"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">Actual</span></div>
+</div>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full border-separate border-spacing-y-2 text-center text-xs font-bold">
+<thead>
+<tr class="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+<th class="text-left p-2">MÉTRICA CHEQUEADO</th>
+<th class="p-2">TARGET</th>
+<th class="p-2">LINEA CH1</th>
+<th class="p-2">LINEA CH2</th>
+<th class="p-2">LINEA CH3</th>
+<th class="p-2">LINEA CH4</th>
+<th class="p-2">BULTOS PROCESADOS</th>
+<th class="p-2">ACCURACY %</th>
+<th class="p-2">UNLOAD (S)</th>
+<th class="p-2">SCAN (S)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="text-left p-2.5 font-bold text-slate-800 dark:text-slate-100">Turno Mañana (06–14)</td>
+<td class="p-2.5 rounded-xl kpi-target">120 u/h</td>
+<td class="p-2.5 rounded-xl kpi-ok">138 u/h</td>
+<td class="p-2.5 rounded-xl kpi-ok">130 u/h</td>
+<td class="p-2.5 rounded-xl kpi-ok">124 u/h</td>
+<td class="p-2.5 rounded-xl kpi-warn">118 u/h</td>
+<td class="p-2.5 rounded-xl kpi-target">5.200 bultos</td>
+<td class="p-2.5 rounded-xl kpi-ok">99,4%</td>
+<td class="p-2.5 rounded-xl kpi-ok">12s</td>
+<td class="p-2.5 rounded-xl kpi-ok">18s</td>
+</tr>
+<tr>
+<td class="text-left p-2.5 font-bold text-slate-800 dark:text-slate-100">Turno Tarde (14–22)</td>
+<td class="p-2.5 rounded-xl kpi-target">120 u/h</td>
+<td class="p-2.5 rounded-xl kpi-ok">125 u/h</td>
+<td class="p-2.5 rounded-xl kpi-warn">121 u/h</td>
+<td class="p-2.5 rounded-xl kpi-off">112 u/h</td>
+<td class="p-2.5 rounded-xl kpi-off">108 u/h</td>
+<td class="p-2.5 rounded-xl kpi-target">4.100 bultos</td>
+<td class="p-2.5 rounded-xl kpi-warn">97,8%</td>
+<td class="p-2.5 rounded-xl kpi-warn">16s</td>
+<td class="p-2.5 rounded-xl kpi-warn">22s</td>
+</tr>
+<tr>
+<td class="text-left p-2.5 font-bold text-slate-800 dark:text-slate-100">Turno Noche (22–06)</td>
+<td class="p-2.5 rounded-xl kpi-target">120 u/h</td>
+<td class="p-2.5 rounded-xl kpi-warn">119 u/h</td>
+<td class="p-2.5 rounded-xl kpi-warn">116 u/h</td>
+<td class="p-2.5 rounded-xl kpi-off">105 u/h</td>
+<td class="p-2.5 rounded-xl kpi-off">102 u/h</td>
+<td class="p-2.5 rounded-xl kpi-target">2.800 bultos</td>
+<td class="p-2.5 rounded-xl kpi-ok">98,9%</td>
+<td class="p-2.5 rounded-xl kpi-ok">14s</td>
+<td class="p-2.5 rounded-xl kpi-warn">20s</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- TAB 4: DCI -->
+<div class="tab-content hidden space-y-6" id="tab-dci">
+<div class="flex flex-wrap justify-between items-start gap-4">
+<div>
+<span class="text-[10px] font-black text-indigo-600 dark:text-indigo-400 tracking-wider uppercase">OPERACIÓN · RECEPCIÓN RÁPIDA</span>
+<h1 class="text-2xl md:text-3xl font-black text-slate-900 dark:text-white">Recepción Rápida · Performance</h1>
+</div>
+</div>
+<div class="grid grid-cols-1 gap-6">
+<div class="bg-slate-50/60 dark:bg-slate-800/30 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 overflow-x-auto">
+<span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-4">CASCADA DE PALANCAS (16 VARIABLES)</span>
+<div class="h-44 min-w-[900px] flex items-end justify-between px-2 pt-6 pb-2 border-b border-slate-200 dark:border-slate-700/60">
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-slate-400">125</span><div class="wf-bar bg-slate-400/80 h-24"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">Base</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-emerald-600">+2</span><div class="wf-bar bg-emerald-500 h-6"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">NH1</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-emerald-600">+1</span><div class="wf-bar bg-emerald-500 h-4"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">NH2</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-rose-500">-1</span><div class="wf-bar bg-rose-500 h-4"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">NH3</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-rose-500">-2</span><div class="wf-bar bg-rose-500 h-6"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">NH4</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-emerald-600">+3</span><div class="wf-bar bg-emerald-500 h-8"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">NATIVO</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-emerald-600">+2</span><div class="wf-bar bg-emerald-500 h-6"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">PT</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-emerald-600">+2</span><div class="wf-bar bg-emerald-500 h-6"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">Vol.<br>Toteable</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-rose-500">-1</span><div class="wf-bar bg-rose-500 h-4"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">Vol. No<br>Toteable</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-emerald-600">+1</span><div class="wf-bar bg-emerald-500 h-4"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">Tote XS</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-emerald-600">+1</span><div class="wf-bar bg-emerald-500 h-4"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">Tote S</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-emerald-600">+2</span><div class="wf-bar bg-emerald-500 h-6"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">Tote M</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-rose-500">-1</span><div class="wf-bar bg-rose-500 h-4"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">Tote L</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-rose-500">-1</span><div class="wf-bar bg-rose-500 h-4"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">Tote XL</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-rose-500">-2</span><div class="wf-bar bg-rose-500 h-6"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">Satura-<br>fullness</span></div>
+<div class="flex flex-col items-center gap-1 flex-1"><span class="text-[9px] font-extrabold text-indigo-600 dark:text-indigo-400">131</span><div class="wf-bar bg-indigo-600 dark:bg-indigo-500 h-28"></div><span class="wf-label text-slate-600 dark:text-slate-300 font-bold">Actual</span></div>
+</div>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full border-separate border-spacing-y-2 text-center text-xs font-bold">
+<thead>
+<tr class="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+<th class="text-left p-2">MÉTRICA REC. RÁPIDA</th>
+<th class="p-2">TARGET</th>
+<th class="p-2">LÍNEA 1</th>
+<th class="p-2">LÍNEA 2</th>
+<th class="p-2">LÍNEA 3</th>
+<th class="p-2">LÍNEA 4</th>
+<th class="p-2">VOLUMEN REC. RÁPIDA (M³)</th>
+<th class="p-2">SHARE REC. RÁPIDA %</th>
+<th class="p-2">UNLOAD (S)</th>
+<th class="p-2">WAIT (S)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="text-left p-2.5 font-bold text-slate-800 dark:text-slate-100">Turno Mañana (06–14)</td>
+<td class="p-2.5 rounded-xl kpi-target">125 u/h</td>
+<td class="p-2.5 rounded-xl kpi-ok">145 u/h</td>
+<td class="p-2.5 rounded-xl kpi-ok">138 u/h</td>
+<td class="p-2.5 rounded-xl kpi-ok">132 u/h</td>
+<td class="p-2.5 rounded-xl kpi-warn">124 u/h</td>
+<td class="p-2.5 rounded-xl kpi-target">520 m³</td>
+<td class="p-2.5 rounded-xl kpi-ok">89,0%</td>
+<td class="p-2.5 rounded-xl kpi-ok">10s</td>
+<td class="p-2.5 rounded-xl kpi-ok">12s</td>
+</tr>
+<tr>
+<td class="text-left p-2.5 font-bold text-slate-800 dark:text-slate-100">Turno Tarde (14–22)</td>
+<td class="p-2.5 rounded-xl kpi-target">125 u/h</td>
+<td class="p-2.5 rounded-xl kpi-ok">133 u/h</td>
+<td class="p-2.5 rounded-xl kpi-warn">126 u/h</td>
+<td class="p-2.5 rounded-xl kpi-off">118 u/h</td>
+<td class="p-2.5 rounded-xl kpi-off">115 u/h</td>
+<td class="p-2.5 rounded-xl kpi-target">410 m³</td>
+<td class="p-2.5 rounded-xl kpi-ok">83,0%</td>
+<td class="p-2.5 rounded-xl kpi-warn">15s</td>
+<td class="p-2.5 rounded-xl kpi-off">24s</td>
+</tr>
+<tr>
+<td class="text-left p-2.5 font-bold text-slate-800 dark:text-slate-100">Turno Noche (22–06)</td>
+<td class="p-2.5 rounded-xl kpi-target">125 u/h</td>
+<td class="p-2.5 rounded-xl kpi-warn">122 u/h</td>
+<td class="p-2.5 rounded-xl kpi-warn">118 u/h</td>
+<td class="p-2.5 rounded-xl kpi-off">110 u/h</td>
+<td class="p-2.5 rounded-xl kpi-off">108 u/h</td>
+<td class="p-2.5 rounded-xl kpi-target">290 m³</td>
+<td class="p-2.5 rounded-xl kpi-ok">86,5%</td>
+<td class="p-2.5 rounded-xl kpi-ok">12s</td>
+<td class="p-2.5 rounded-xl kpi-warn">20s</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- TAB 5: CALIDAD -->
+<div class="tab-content hidden space-y-6" id="tab-calidad">
+<!-- Encabezado y KPI Principal -->
+<div class="flex flex-wrap justify-between items-start gap-4">
+<div>
+<span class="text-[10px] font-black text-indigo-600 dark:text-indigo-400 tracking-wider uppercase">Calidad &amp; Auditoría</span>
+<h1 class="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">Calidad, Auditoría &amp; Precisión DPMO</h1>
+<p class="text-xs font-semibold text-slate-400 dark:text-slate-500 mt-0.5">Índice de precisión de auditoría, control de errores por millón (DPMO) e incidencias.</p>
+</div>
+<div class="bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-4 shadow-sm text-right min-w-[220px]">
+<span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">INBOUND AUDIT ACCURACY</span>
+<div class="flex items-baseline justify-end gap-1 my-0.5">
+<span class="text-3xl font-black text-indigo-600 dark:text-indigo-400">98,4</span>
+<span class="text-sm font-bold text-indigo-600 dark:text-indigo-400">%</span>
+</div>
+<div class="inline-flex items-center gap-1 text-[11px] font-extrabold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800/40">
+            ▲ +0.4% vs Target 98%
+          </div>
+</div>
+</div>
+<!-- Cascada de Palancas + Tarjetas Qué Hicimos Bien / Qué Mejorar -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<!-- Cascada Waterfall -->
+<div class="lg:col-span-8 bg-slate-50/60 dark:bg-slate-800/30 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 overflow-x-auto">
+<span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-4">CASCADA DE PALANCAS DE CALIDAD (% ACCURACY)</span>
+<div class="h-44 min-w-[500px] flex items-end justify-between px-6 pt-6 pb-2 border-b border-slate-200 dark:border-slate-700/60">
+<!-- Base -->
+<div class="flex flex-col items-center gap-1 flex-1">
+<span class="text-[10px] font-extrabold text-slate-500">98,0%</span>
+<div class="wf-bar bg-slate-400/80 h-28"></div>
+<span class="wf-label text-slate-600 dark:text-slate-300 font-bold">Base</span>
+</div>
+<!-- Audit Express -->
+<div class="flex flex-col items-center gap-1 flex-1">
+<span class="text-[10px] font-extrabold text-emerald-600">+0.8%</span>
+<div class="wf-bar bg-emerald-500 h-10"></div>
+<span class="wf-label text-slate-600 dark:text-slate-300 font-bold">Audit Express</span>
+</div>
+<!-- Capacitaciones -->
+<div class="flex flex-col items-center gap-1 flex-1">
+<span class="text-[10px] font-extrabold text-emerald-600">+0.4%</span>
+<div class="wf-bar bg-emerald-500 h-6"></div>
+<span class="wf-label text-slate-600 dark:text-slate-300 font-bold">Capacitaciones</span>
+</div>
+<!-- SKU Faltante -->
+<div class="flex flex-col items-center gap-1 flex-1">
+<span class="text-[10px] font-extrabold text-rose-500">-0.5%</span>
+<div class="wf-bar bg-rose-500 h-8"></div>
+<span class="wf-label text-slate-600 dark:text-slate-300 font-bold">SKU Faltante</span>
+</div>
+<!-- DPMO Cruce -->
+<div class="flex flex-col items-center gap-1 flex-1">
+<span class="text-[10px] font-extrabold text-rose-500">-0.3%</span>
+<div class="wf-bar bg-rose-500 h-5"></div>
+<span class="wf-label text-slate-600 dark:text-slate-300 font-bold">DPMO Cruce</span>
+</div>
+<!-- Actual -->
+<div class="flex flex-col items-center gap-1 flex-1">
+<span class="text-[10px] font-extrabold text-indigo-600 dark:text-indigo-400">98,4%</span>
+<div class="wf-bar bg-indigo-600 dark:bg-indigo-500 h-32"></div>
+<span class="wf-label text-slate-600 dark:text-slate-300 font-bold">Actual</span>
+</div>
+</div>
+</div>
+<!-- Tarjetas Qué hicimos bien / Qué tenemos que mejorar -->
+<div class="lg:col-span-4 flex flex-col gap-4">
+<!-- Qué hicimos bien -->
+<div class="bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-800/40 rounded-2xl p-4">
+<h3 class="text-xs font-black text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5 mb-2">
+<span>✓</span> Qué hicimos bien
+            </h3>
+<ul class="text-xs font-semibold text-emerald-950 dark:text-emerald-200 space-y-1.5 list-disc list-inside">
+<li>DPMO Cruce bajó a mínimos históricos de 175.</li>
+<li>Reaperturas se mantienen bajo la meta del 1.0%.</li>
+</ul>
+</div>
+<!-- Qué tenemos que mejorar -->
+<div class="bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200/80 dark:border-rose-800/40 rounded-2xl p-4">
+<h3 class="text-xs font-black text-rose-800 dark:text-rose-300 flex items-center gap-1.5 mb-2">
+<span>!</span> Qué tenemos que mejorar
+            </h3>
+<ul class="text-xs font-semibold text-rose-950 dark:text-rose-200 space-y-1.5 list-disc list-inside">
+<li>Concentración de DPMO Faltante en líneas de calzado.</li>
+<li>Leve alza de Contact Rate durante el turno martes.</li>
+</ul>
+</div>
+</div>
+</div>
+<!-- Tabla de Calidad por Turno -->
+<div class="overflow-x-auto">
+<table class="w-full border-separate border-spacing-y-2 text-center text-xs font-bold">
+<thead>
+<tr class="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+<th class="text-left p-2">MÉTRICA CALIDAD</th>
+<th class="p-2">TARGET</th>
+<th class="p-2">AUDIT ACCURACY</th>
+<th class="p-2">CONTACT RATE</th>
+<th class="p-2">% REAPERTURAS</th>
+<th class="p-2">DPMO CRUCE</th>
+<th class="p-2">DPMO FALTANTE</th>
+<th class="p-2">MUESTRAS AUDITADAS</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="text-left p-2.5 font-bold text-slate-800 dark:text-slate-100">Turno Mañana (06–14)</td>
+<td class="p-2.5 rounded-xl kpi-target">98,0%</td>
+<td class="p-2.5 rounded-xl kpi-ok">98,8%</td>
+<td class="p-2.5 rounded-xl kpi-ok">2,1%</td>
+<td class="p-2.5 rounded-xl kpi-ok">0,8%</td>
+<td class="p-2.5 rounded-xl kpi-ok">175</td>
+<td class="p-2.5 rounded-xl kpi-ok">200</td>
+<td class="p-2.5 rounded-xl kpi-target">1.250 u</td>
+</tr>
+<tr>
+<td class="text-left p-2.5 font-bold text-slate-800 dark:text-slate-100">Turno Tarde (14–22)</td>
+<td class="p-2.5 rounded-xl kpi-target">98,0%</td>
+<td class="p-2.5 rounded-xl kpi-warn">97,8%</td>
+<td class="p-2.5 rounded-xl kpi-warn">2,6%</td>
+<td class="p-2.5 rounded-xl kpi-off">1,1%</td>
+<td class="p-2.5 rounded-xl kpi-ok">210</td>
+<td class="p-2.5 rounded-xl kpi-ok">260</td>
+<td class="p-2.5 rounded-xl kpi-target">980 u</td>
+</tr>
+<tr>
+<td class="text-left p-2.5 font-bold text-slate-800 dark:text-slate-100">Turno Noche (22–06)</td>
+<td class="p-2.5 rounded-xl kpi-target">98,0%</td>
+<td class="p-2.5 rounded-xl kpi-ok">98,5%</td>
+<td class="p-2.5 rounded-xl kpi-ok">2,2%</td>
+<td class="p-2.5 rounded-xl kpi-ok">0,9%</td>
+<td class="p-2.5 rounded-xl kpi-ok">180</td>
+<td class="p-2.5 rounded-xl kpi-ok">210</td>
+<td class="p-2.5 rounded-xl kpi-target">650 u</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+    function switchTab(tabId) {
+      const tabs = document.querySelectorAll('.tab-content');
+      tabs.forEach(tab => {
+        tab.classList.add('hidden');
+        tab.classList.remove('block');
+      });
+
+      const target = document.getElementById('tab-' + tabId);
+      if (target) {
+        target.classList.remove('hidden');
+        target.classList.add('block');
+      }
+
+      const navButtons = ['daily', 'putaway', 'checkin', 'dci', 'calidad'];
+      navButtons.forEach(btn => {
+        const el = document.getElementById('nav-' + btn);
+        if (btn === tabId) {
+          el.className = 'px-4 py-1.5 rounded-full bg-accent-800 dark:bg-accent-700 text-white shadow-sm font-bold transition-all';
+        } else {
+          el.className = 'px-3.5 py-1.5 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-all text-slate-600 dark:text-slate-300';
+        }
+      });
+    }
+
+    function toggleDarkMode() {
+      const html = document.documentElement;
+      const btn = document.getElementById('theme-btn');
+      if (html.classList.contains('dark')) {
+        html.classList.remove('dark');
+        btn.innerText = '🌙';
+      } else {
+        html.classList.add('dark');
+        btn.innerText = '☀️';
+      }
+    }
+
+    let currentVisibleWeeks = 4;
+    function setHistoricalWeeks(weeks) {
+      currentVisibleWeeks = weeks;
+      
+      const buttons = document.querySelectorAll('#weeks-btn-group button');
+      buttons.forEach((btn, index) => {
+        if (index + 1 === weeks) {
+          btn.className = 'w-6 h-6 rounded-lg text-xs font-bold bg-accent-800 text-white shadow-sm transition-all';
+        } else {
+          btn.className = 'w-6 h-6 rounded-lg text-xs font-bold bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 transition-all';
+        }
+      });
+
+      const cols = [26, 27, 28, 29];
+      const startIdx = cols.length - weeks;
+      
+      cols.forEach((colNum, idx) => {
+        const cells = document.querySelectorAll(`[data-hist-col="${colNum}"]`);
+        cells.forEach(cell => {
+          if (idx >= startIdx) {
+            cell.classList.remove('hidden');
+          } else {
+            cell.classList.add('hidden');
+          }
+        });
+      });
+
+      const histHeaderGroup = document.getElementById('hist-header-group');
+      histHeaderGroup.colSpan = weeks;
+    }
+
+    function setDensity(mode) {
+      const mainCard = document.getElementById('main-card');
+      const btnNormal = document.getElementById('btn-density-normal');
+      const btnCompact = document.getElementById('btn-density-compact');
+
+      if (mode === 'normal') {
+        mainCard.classList.remove('density-compact');
+        mainCard.classList.add('density-normal');
+        btnNormal.className = 'px-2.5 py-0.5 bg-accent-800 text-white rounded-md shadow-sm transition-all';
+        btnCompact.className = 'px-2.5 py-0.5 text-slate-600 dark:text-slate-300 rounded-md transition-all';
+      } else {
+        mainCard.classList.remove('density-normal');
+        mainCard.classList.add('density-compact');
+        btnCompact.className = 'px-2.5 py-0.5 bg-accent-800 text-white rounded-md shadow-sm transition-all';
+        btnNormal.className = 'px-2.5 py-0.5 text-slate-600 dark:text-slate-300 rounded-md transition-all';
+      }
+    }
+  </script>
+<script>
+(function () {
+  "use strict";
+
+  // Configuración
+    var HIST_SLOTS = [26, 27, 28, 29]; // posiciones fijas usadas por setHistoricalWeeks()
+  var DAY_NAMES = { 0: "sun", 1: "mon", 2: "tue", 3: "wed", 4: "thu", 5: "fri", 6: "sat" };
+  var DAY_LABEL_ES = { 0: "DOM", 1: "LUN", 2: "MAR", 3: "MIÉ", 4: "JUE", 5: "VIE", 6: "SÁB" };
+
+  // row-id -> de dónde sale el valor y cómo se compara contra el target
+  var METRICS = [
+    { row: "row-inp",            source: "prod", field: "INP",              target: "TARGET_INP",            fallbackTarget: 92,    higherBetter: true,  decimals: 2, scale: 1 },
+    { row: "row-sla",            source: "cal",  field: "SLA_PCT",          target: null,                    fallbackTarget: 0.955, higherBetter: true,  decimals: 2, scale: 100 },
+    { row: "row-dpmo-sla",       source: "cal",  field: "DPMO_SLA",         target: null,                    fallbackTarget: 5000,  higherBetter: false, decimals: 2, scale: 1 },
+    { row: "row-tph-ch-dci",     source: "prod", field: "UNID_CH_DCI",      target: null,                    fallbackTarget: null,  higherBetter: true,  decimals: 2, scale: 1, agg: "sum" },
+    { row: "row-tph-putaway",    source: "prod", field: "UNID_PUTAWAY",     target: null,                    fallbackTarget: null,  higherBetter: true,  decimals: 2, scale: 1, agg: "sum" },
+    { row: "row-neta-receiving", source: "prod", field: "NETA_RECEIVING",   target: "TARGET_NETA_RECEIVING", fallbackTarget: 110,   higherBetter: true,  decimals: 2, scale: 1 },
+    { row: "row-neta-checkin",   source: "prod", field: "NETA_CHECKIN",     target: "TARGET_NETA_CHECKIN",   fallbackTarget: 120,   higherBetter: true,  decimals: 2, scale: 1 },
+    { row: "row-neta-dci",       source: "prod", field: "NETA_DCI",         target: "TARGET_NETA_DCI",       fallbackTarget: 125,   higherBetter: true,  decimals: 2, scale: 1 },
+    { row: "row-neta-putaway",   source: "prod", field: "NETA_PUTAWAY",     target: "TARGET_NETA_PUTAWAY",   fallbackTarget: 135,   higherBetter: true,  decimals: 2, scale: 1 },
+    { row: "row-share-dci",      source: "prod", field: "SHARE_DCI",        target: null,                    fallbackTarget: 30,    higherBetter: true,  decimals: 2, scale: 1 },
+    { row: "row-at",             source: "at",   field: "AT_PCT",           target: null,                    fallbackTarget: 0.90,  higherBetter: true,  decimals: 2, scale: 100 },
+    { row: "row-teo",            source: "cal",  field: "TEO_INBOUND_AUDIT",target: null,                    fallbackTarget: 0.01,  higherBetter: true,  decimals: 2, scale: 100 },
+    { row: "row-contact-rate",   source: "cal",  field: "CONTACT_RATE",     target: null,                    fallbackTarget: 0.0446,higherBetter: false, decimals: 2, scale: 100 },
+    { row: "row-reaperturas",    source: "cal",  field: "PCT_REAPERTURAS",  target: null,                    fallbackTarget: 0.04,  higherBetter: false, decimals: 2, scale: 100 },
+    { row: "row-inbound-audit",  source: "cal",  field: "INBOUND_AUDIT",    target: null,                    fallbackTarget: 10000, higherBetter: false, decimals: 2, scale: 1 },
+    { row: "row-dpmo-cruce",     source: "cal",  field: "DPMO_CRUCE",       target: null,                    fallbackTarget: 500,   higherBetter: false, decimals: 2, scale: 1 },
+    { row: "row-dpmo-faltante",  source: "cal",  field: "DPMO_FALTANTE",    target: null,                    fallbackTarget: 600,   higherBetter: false, decimals: 2, scale: 1 }
+  ];
+
+  function toNum(v) {
+    if (v === null || v === undefined || v === "") return null;
+    var n = Number(v);
+    return isNaN(n) ? null : n;
+  }
+
+  function fmt(v, decimals, scale) {
+    if (v === null || v === undefined || isNaN(v)) return "—";
+    var val = scale ? v * scale : v;
+    return val.toLocaleString("es-CL", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  }
+
+  function classify(value, target, higherBetter) {
+    if (value === null || target === null || target === undefined) return null;
+    var diffPct = (value - target) / (target === 0 ? 1 : Math.abs(target));
+    if (!higherBetter) diffPct = -diffPct;
+    if (diffPct >= 0) return "kpi-ok";
+    if (diffPct >= -0.05) return "kpi-warn";
+    return "kpi-off";
+  }
+
+  function paint(cell, value, decimals, scale, target, higherBetter) {
+    if (!cell) return;
+    cell.textContent = fmt(value, decimals, scale);
+    cell.classList.remove("kpi-ok", "kpi-warn", "kpi-off");
+    var cls = classify(value, target, higherBetter);
+    if (cls) cell.classList.add(cls);
+  }
+
+  function groupByWeek(rows) {
+    var map = {};
+    (rows || []).forEach(function (r) {
+      if (!r || !r.semana_fiscal) return;
+      (map[r.semana_fiscal] = map[r.semana_fiscal] || []).push(r);
+    });
+    return map;
+  }
+
+  function avg(rows, field) {
+    var vals = (rows || [])
+      .map(function (r) { return toNum(r[field]); })
+      .filter(function (v) { return v !== null; });
+    if (!vals.length) return null;
+    return vals.reduce(function (a, b) { return a + b; }, 0) / vals.length;
+  }
+
+  function sum(rows, field) {
+    var vals = (rows || [])
+      .map(function (r) { return toNum(r[field]); })
+      .filter(function (v) { return v !== null; });
+    if (!vals.length) return null;
+    return vals.reduce(function (a, b) { return a + b; }, 0);
+  }
+
+  function byWeekday(rows) {
+    var map = {};
+    (rows || []).forEach(function (r) {
+      if (!r.FECHA) return;
+      var d = new Date(r.FECHA + "T00:00:00");
+      var idx = d.getDay(); // 0=Dom .. 6=Sab
+      map[idx] = r;
+    });
+    return map;
+  }
+
+  function latestRow(rows) {
+    var withDate = (rows || []).filter(function (r) { return !!r.FECHA; });
+    if (!withDate.length) return null;
+    withDate.sort(function (a, b) { return a.FECHA < b.FECHA ? 1 : -1; });
+    return withDate[0];
+  }
+
+  function showBanner(msg) {
+    var el = document.getElementById("live-data-banner");
+    if (!el) return;
+    el.textContent = "⚠ " + msg;
+    el.classList.remove("hidden");
+  }
+
+  function updateTopCards(currentWeek, prodRows, calRows) {
+    var weekEl = document.getElementById("kpi-semana-actual-value");
+    if (weekEl && currentWeek) weekEl.textContent = currentWeek.split("-")[0];
+
+    var lastProd = latestRow(prodRows);
+    if (lastProd) {
+      var inp = toNum(lastProd.INP);
+      var targetInp = toNum(lastProd.TARGET_INP);
+      var valEl = document.getElementById("kpi-inp-ayer-value");
+      if (valEl) valEl.textContent = fmt(inp, 1, 1);
+      var badge = document.getElementById("kpi-inp-ayer-badge");
+      var dayEl = document.getElementById("kpi-inp-ayer-day");
+      if (badge && inp !== null && targetInp) {
+        var diff = inp - targetInp;
+        badge.classList.remove("text-emerald-700", "text-rose-700", "bg-emerald-50", "bg-rose-50",
+          "dark:text-emerald-400", "dark:text-rose-400", "dark:bg-emerald-950/40", "dark:bg-rose-950/40",
+          "border-emerald-200", "border-rose-200", "dark:border-emerald-800/40", "dark:border-rose-800/40");
+        badge.classList.add(diff >= 0 ? "text-emerald-800" : "text-rose-800");
+        badge.firstChild.textContent = (diff >= 0 ? "+" : "") + diff.toFixed(1) + "% vs target ";
+      }
+      if (dayEl) {
+        var d = new Date(lastProd.FECHA + "T00:00:00");
+        dayEl.textContent = "· " + (DAY_LABEL_ES[d.getDay()] || "");
+      }
+    }
+
+    var lastCal = latestRow(calRows);
+    if (lastCal) {
+      var sla = toNum(lastCal.SLA_PCT);
+      var valEl2 = document.getElementById("kpi-sla-ayer-value");
+      if (valEl2) valEl2.textContent = fmt(sla, 1, 100);
+      var badge2 = document.getElementById("kpi-sla-ayer-badge");
+      var dayEl2 = document.getElementById("kpi-sla-ayer-day");
+      if (badge2 && sla !== null) {
+        var diff2 = sla * 100 - 100; // sin target explícito en BQ, se compara contra 100%
+        badge2.firstChild.textContent = (diff2 >= 0 ? "+" : "") + diff2.toFixed(1) + "% vs target ";
+      }
+      if (dayEl2) {
+        var d2 = new Date(lastCal.FECHA + "T00:00:00");
+        dayEl2.textContent = "· " + (DAY_LABEL_ES[d2.getDay()] || "");
+      }
+    }
+  }
+
+  function render(prodRows, calRows, atRows, selectedWeek) {
+    var weeksProd = groupByWeek(prodRows);
+    var weeksCal = groupByWeek(calRows);
+    var weeksAt = groupByWeek(atRows);
+    var sourceWeeks = { prod: weeksProd, cal: weeksCal, at: weeksAt };
+
+    var allWeeks = Array.from(new Set(
+      Object.keys(weeksProd).concat(Object.keys(weeksCal), Object.keys(weeksAt))
+    )).sort();
+
+    if (!allWeeks.length) {
+      showBanner("Sin datos.");
+      return;
+    }
+
+    var currentWeek = (selectedWeek && allWeeks.indexOf(selectedWeek) !== -1) ? selectedWeek : allWeeks[allWeeks.length - 1];
+    var curIdx = allWeeks.indexOf(currentWeek);
+    var histWeeks = allWeeks.slice(0, curIdx).slice(-4);
+    while (histWeeks.length < 4) histWeeks.unshift(null);
+
+    // Encabezados de las 5 columnas históricas
+    histWeeks.forEach(function (wk, i) {
+      var th = document.querySelector('th[data-hist-col="' + HIST_SLOTS[i] + '"]');
+      if (th) th.textContent = wk ? wk.split("-")[0] : "—";
+    });
+
+    document.querySelectorAll(".current-week-label").forEach(function (el) {
+      el.textContent = currentWeek.split("-")[0];
+    });
+
+    var prodByDay = byWeekday(weeksProd[currentWeek] || []);
+    var calByDay = byWeekday(weeksCal[currentWeek] || []);
+    var atByDay = byWeekday(weeksAt[currentWeek] || []);
+    var byDayBySource = { prod: prodByDay, cal: calByDay, at: atByDay };
+
+    METRICS.forEach(function (m) {
+      var row = document.getElementById(m.row);
+      if (!row) return;
+
+      // columnas históricas: promedio semanal
+      histWeeks.forEach(function (wk, i) {
+        var cell = row.querySelector('td[data-hist-col="' + HIST_SLOTS[i] + '"]');
+        if (!cell) return;
+        var weekRows = wk ? (sourceWeeks[m.source][wk] || []) : [];
+        var v = weekRows.length ? (m.agg === "sum" ? sum(weekRows, m.field) : avg(weekRows, m.field)) : null;
+        paint(cell, v, m.decimals, m.scale, null, m.higherBetter); // sin target -> queda sin color kpi
+      });
+
+      // target: preferir el campo real de BQ (último día disponible), si no existe usar fallback
+      var targetVal = null;
+      for (var d = 5; d >= 1 && targetVal === null; d--) {
+        var r = prodByDay[d] || calByDay[d] || atByDay[d];
+        if (r && m.target && r[m.target] !== undefined && r[m.target] !== null) {
+          targetVal = toNum(r[m.target]);
+        }
+      }
+      if (targetVal === null) targetVal = m.fallbackTarget;
+      var targetCell = row.querySelector('td[data-role="target"]');
+      if (targetCell) targetCell.textContent = fmt(targetVal, m.decimals, m.scale);
+
+      // columnas Lunes..Viernes de la semana actual
+      [0, 1, 2, 3, 4, 5, 6].forEach(function (d) {
+        var cell = row.querySelector('td[data-day="' + DAY_NAMES[d] + '"]');
+        if (!cell) return;
+        var r = byDayBySource[m.source][d];
+        var v = r ? toNum(r[m.field]) : null;
+        paint(cell, v, m.decimals, m.scale, targetVal, m.higherBetter);
+      });
+    });
+
+    updateTopCards(currentWeek, prodRows, calRows);
+  }
+
+  var LAST_DATA = null;
+
+  function populateWeekFilter() {
+    var sel = document.getElementById("week-filter-select");
+    if (!sel || !LAST_DATA) return;
+    var weeksProd = groupByWeek(LAST_DATA.prod);
+    var weeksCal = groupByWeek(LAST_DATA.cal);
+    var weeksAt = groupByWeek(LAST_DATA.at);
+    var allWeeks = Array.from(new Set(
+      Object.keys(weeksProd).concat(Object.keys(weeksCal), Object.keys(weeksAt))
+    )).sort();
+    sel.innerHTML = "";
+    allWeeks.slice().reverse().forEach(function (wk) {
+      var opt = document.createElement("option");
+      opt.value = wk;
+      opt.textContent = wk;
+      sel.appendChild(opt);
+    });
+    if (allWeeks.length) sel.value = allWeeks[allWeeks.length - 1];
+  }
+
+  function onWeekFilterChange() {
+    if (!LAST_DATA) return;
+    var sel = document.getElementById("week-filter-select");
+    render(LAST_DATA.prod, LAST_DATA.cal, LAST_DATA.at, sel ? sel.value : null);
+  }
+  window.onWeekFilterChange = onWeekFilterChange;
+
+
+  // ------------------------------------------------------------------
+  // DATOS SINTÉTICOS DE EJEMPLO (no son datos reales).
+  // Mismo formato que los 3 datasets que publica el workflow n8n:
+  //   prod = productividad diaria, cal = calidad diaria, at = asistencia diaria
+  // ------------------------------------------------------------------
+  function buildMockData() {
+    var seed = 20261028;
+    function rnd() { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; }
+    function b(a, z) { return a + (z - a) * rnd(); }
+    function pad(n) { return (n < 10 ? "0" : "") + n; }
+    var W1 = new Date(2025, 11, 28);            // inicio semana fiscal W01 (domingo)
+    var end = new Date(2026, 9, 28);            // último dato: miércoles 28-10-2026
+    var start = new Date(2026, 8, 27);          // domingo 27-09-2026 (W40)
+    var prod = [], cal = [], at = [];
+    for (var d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      var fecha = d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+      var wk = Math.floor((d - W1) / (7 * 86400000)) + 1;
+      var semana = "W" + pad(wk) + "-" + d.getFullYear();
+      var dom = d.getDay() === 0 ? 0.35 : 1;   // domingo con menos volumen
+      prod.push({
+        semana_fiscal: semana, FECHA: fecha,
+        INP: b(78, 96), TARGET_INP: 88,
+        UNID_CH_DCI: Math.round(b(180000, 320000) * dom), UNID_PUTAWAY: Math.round(b(180000, 330000) * dom),
+        NETA_RECEIVING: b(380, 470), TARGET_NETA_RECEIVING: 440,
+        NETA_CHECKIN: b(180, 260), TARGET_NETA_CHECKIN: 225,
+        NETA_DCI: b(450, 700), TARGET_NETA_DCI: 540,
+        NETA_PUTAWAY: b(170, 220), TARGET_NETA_PUTAWAY: 205,
+        SHARE_DCI: b(24, 38)
+      });
+      var den = Math.round(b(150000, 300000) * dom);
+      cal.push({
+        semana_fiscal: semana, FECHA: fecha,
+        SLA_DENOMINATOR: den, SLA_NUMERATOR: Math.round(den * b(0.975, 1)),
+        TEO_INBOUND_AUDIT: b(0.008, 0.016), CONTACT_RATE: b(0.025, 0.05),
+        PCT_REAPERTURAS: b(0.015, 0.05), INBOUND_AUDIT: b(6000, 12000),
+        DPMO_CRUCE: b(250, 650), DPMO_FALTANTE: b(350, 750)
+      });
+      at.push({ semana_fiscal: semana, FECHA: fecha, AT_PCT: b(0.86, 0.97) });
+    }
+    cal.forEach(function (r) { r.SLA_PCT = r.SLA_NUMERATOR / r.SLA_DENOMINATOR; });
+    return [prod, cal, at];
+  }
+
+  // Si existe data/daily.json ({prod:[...], cal:[...], at:[...]}) se usan datos reales.
+  function loadData() {
+    if (location.protocol === "file:") return Promise.resolve(buildMockData());
+    return fetch("data/daily.json").then(function (r) {
+      if (!r.ok) throw new Error(r.status);
+      return r.json();
+    }).then(function (j) { return [j.prod || [], j.cal || [], j.at || []]; })
+      .catch(function () { return buildMockData(); });
+  }
+  function main() {
+    loadData().then(function (results) {
+      var prod = results[0], cal = results[1], at = results[2];
+      if (!prod && !cal && !at) {
+        showBanner("No se pudieron cargar los datos.");
+        return;
+      }
+      // DPMO SLA = (DENOMINATOR - NUMERATOR) / DENOMINATOR * 1e6 (unidades atrasadas por millon)
+      var calWithDpmo = (cal || []).map(function (r) {
+        var num = toNum(r.SLA_NUMERATOR);
+        var den = toNum(r.SLA_DENOMINATOR);
+        var atrasado = (num !== null && den !== null) ? (den - num) : null;
+        var dpmo = (atrasado !== null && den) ? (atrasado / den) * 1000000 : null;
+        r.DPMO_SLA = dpmo;
+        return r;
+      });
+      LAST_DATA = { prod: prod || [], cal: calWithDpmo, at: at || [] };
+      populateWeekFilter();
+      render(LAST_DATA.prod, LAST_DATA.cal, LAST_DATA.at);
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", main);
+  } else {
+    main();
+  }
+})();
+</script>
+</body></html>
